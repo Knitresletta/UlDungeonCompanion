@@ -9,6 +9,7 @@ UlDC = { name = "UlDungeonCompanion", enabled = {} }
 
 local DEFAULTS = {
     dungeonpins = true,
+    questpins   = true,
 }
 
 local function InitDB()
@@ -40,6 +41,7 @@ end
 -- next to the checkbox and in /udc help.
 local FEATURES = {
     { key = "dungeonpins", group = "Map", label = "Dungeon Entrances", desc = "Every dungeon and raid entrance on the world map, with its level range." },
+    { key = "questpins",   group = "Map", label = "Quest Givers",      desc = "Givers of the dungeon and elite quests you can go for, on zone maps." },
 }
 UlDC.FEATURE_GROUPS = { "Map" }
 UlDC.FEATURES = FEATURES
@@ -47,6 +49,12 @@ UlDC.FEATURES = FEATURES
 -- Commands that are not on/off switches. Options.lua shows a button for
 -- the ones with a label.
 local COMMANDS = {
+    { key = "quests", label = "Quests", desc = "open the quest browser: dungeon and elite quests for your level, by dungeon",
+      fn = function() if UlDC.ToggleQuestBrowser then UlDC.ToggleQuestBrowser() end end },
+    { key = "qd", desc = "print the current quest steps and the character filters",
+      fn = function() if UlDC.QuestDebug then UlDC.QuestDebug() end end },
+    { key = "qpins", desc = "print quest pin diagnostics for the open map",
+      fn = function() if UlDC.QuestPinDebug then UlDC.QuestPinDebug() end end },
     { key = "dungeons", label = "List dungeons", desc = "print the dungeons and raids sorted by level, colored for your level",
       fn = function() if UlDC.PrintDungeonList then UlDC.PrintDungeonList() end end },
     { key = "pins", desc = "print dungeon pin diagnostics for the open map",
@@ -70,6 +78,7 @@ end
 -- Modules that need a nudge when a feature changes state.
 local function NotifyModules()
     if UlDC.RefreshDungeonPins then UlDC.RefreshDungeonPins() end
+    if UlDC.RefreshQuestPins then UlDC.RefreshQuestPins() end
     if UlDC.RefreshOptions then UlDC.RefreshOptions() end
 end
 
