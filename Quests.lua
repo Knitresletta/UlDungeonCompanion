@@ -103,16 +103,17 @@ end
 ------------------------------------------------------------------------
 
 -- Walks back from a goal to the first quest in its chain that is not
--- done. Returns the step's ID, or nil when the chain loops.
+-- done. Returns the step's ID and how many quests lie between the step
+-- and the goal, or nil when the chain loops.
 local function FirstUndone(goalID)
     local id = goalID
-    local guard = 0
+    local hops = 0
     while true do
         local q = UlDC.QUESTS[id]
-        if not q or not q.p or IsCompleted(q.p) then return id end
+        if not q or not q.p or IsCompleted(q.p) then return id, hops end
         id = q.p
-        guard = guard + 1
-        if guard > 50 then return nil end
+        hops = hops + 1
+        if hops > 50 then return nil end
     end
 end
 
@@ -121,8 +122,9 @@ local function LevelFits(q, me)
 end
 
 -- Every step worth showing, one entry per step quest:
--- { id, quest, goals = { goalID, ... }, inLog, tooLow, flags, keys }
--- flags and keys are the union over the goals the step leads to.
+-- { id, quest, goals = { goalID, ... }, inLog, tooLow, flags, keys, hops }
+-- flags and keys are the union over the goals the step leads to, hops
+-- the longest way from the step to one of its goals.
 function UlDC.CurrentSteps()
     if stepsCache and stepsVersion == cacheVersion then return stepsCache end
     local me = Player()
@@ -130,17 +132,18 @@ function UlDC.CurrentSteps()
     local list = {}
     for id, q in pairs(UlDC.QUESTS) do
         if q.f and Eligible(q, me) and LevelFits(q, me) and not IsCompleted(id) then
-            local stepID = FirstUndone(id)
+            local stepID, hops = FirstUndone(id)
             local stepQ = stepID and UlDC.QUESTS[stepID]
             if stepQ and Eligible(stepQ, me) then
                 local step = byStep[stepID]
                 if not step then
-                    step = { id = stepID, quest = stepQ, goals = {}, flags = 0, keys = {},
+                    step = { id = stepID, quest = stepQ, goals = {}, flags = 0, keys = {}, hops = 0,
                              inLog = IsInLog(stepID), tooLow = me.level < (stepQ.m or 0) }
                     byStep[stepID] = step
                     list[#list + 1] = step
                 end
                 step.goals[#step.goals + 1] = id
+                if hops > step.hops then step.hops = hops end
                 step.flags = bit.bor(step.flags, q.f)
                 for _, k in ipairs(q.d or {}) do step.keys[k] = true end
             end

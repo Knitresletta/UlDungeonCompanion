@@ -160,8 +160,8 @@ local function Fill()
             local cr, cg, cb = UlDC.LevelColor(q.l)
             local level = string.format("|cff%02x%02x%02x[%d]|r", math.floor(cr * 255), math.floor(cg * 255), math.floor(cb * 255), q.l)
             local goalNote = ""
-            if #step.goals > 1 or step.goals[1] ~= step.id then
-                goalNote = string.format(" |cff999999(%d step%s to go)|r", #step.goals, #step.goals == 1 and "" or "s")
+            if step.hops > 0 then
+                goalNote = string.format(" |cff999999(+%d step%s)|r", step.hops, step.hops == 1 and "" or "s")
             end
             local state = step.inLog and "|cff66ccffin log|r" or (step.tooLow and ("|cffff6666needs " .. (q.m or 0) .. "|r") or "")
             r.text:SetText(level .. " " .. q.t .. goalNote)

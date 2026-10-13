@@ -210,9 +210,25 @@ function UlDC.QuestPinDebug()
     local mapID = (mapOpen and WorldMapFrame:GetMapID()) or C_Map.GetBestMapForUnit("player")
     if not mapID then UlDC.Print("no map to inspect.") return end
     local info = C_Map.GetMapInfo(mapID)
+    local continentID = C_Map.GetWorldPosFromMapPos(mapID, CreateVector2D(0.5, 0.5))
+    local steps = UlDC.CurrentSteps()
+    local onContinent, placeable = 0, 0
+    for _, step in ipairs(steps) do
+        local here = false
+        for _, giver in ipairs(step.quest.g or {}) do
+            for _, pos in ipairs(giver.pos or {}) do
+                if pos[1] == continentID then here = true end
+            end
+        end
+        if here then onContinent = onContinent + 1 end
+        if here and not step.inLog then placeable = placeable + 1 end
+    end
     local ok, entries = pcall(Place, mapID)
-    UlDC.Print(string.format("quest pins on map %d (%s): %s", mapID, info and info.name or "?",
+    UlDC.Print(string.format("quest pins on map %d (%s, type %s, continent %s): %s", mapID, info and info.name or "?",
+        info and tostring(info.mapType) or "?", tostring(continentID),
         ok and tostring(#entries) or ("error " .. tostring(entries))))
+    print(string.format("  steps: %d in all, %d with a giver on this continent, %d of those not in the log",
+        #steps, onContinent, placeable))
     if ok then
         for i, e in ipairs(entries) do
             if i > 20 then print("  ...") break end
