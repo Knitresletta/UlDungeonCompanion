@@ -29,7 +29,7 @@ Forever-klienten (build 1.60.1.70338, Interface 16001) kjører retail 12.x sitt 
 
 - Jonatan spiller på Windows-maskinen `win` (Tailscale, PowerShell). Forever ligger i `C:\Program Files (x86)\World of Warcraft\_classic_beta_\`. Addons: `...\Interface\AddOns\`, SavedVariables: `...\WTF\Account\105561400#1\SavedVariables\UlDungeonCompanion.lua`.
 - **Probe-resultat hentes med scp**, ikke skjermbilde: etter `/udc probe` og `/reload` eller utlogging, `scp "win:C:/Program Files (x86)/World of Warcraft/_classic_beta_/WTF/Account/105561400#1/SavedVariables/UlDungeonCompanion.lua" /tmp/udc/`. Lesing fra Windows er fritt, skriving og sletting krever spørsmål først.
-- Utgivelse: `/package-addon`, beta uten å spørre, release krever klart ja. CurseForge-prosjekt er ikke opprettet ennå (`project_id` tom i `.curseforge.json`); Jonatan oppretter og gir id. Vakt på godkjenningskøen etter hver opplasting.
+- Utgivelse: `/package-addon`, beta uten å spørre, release krever klart ja. CurseForge-prosjekt 1743328 (`project_id` i `.curseforge.json`). Vakt på godkjenningskøen etter hver opplasting.
 - Versjon bumpes i TOC per endring, commit-meldinger med scope (`feat(pins):`, `fix(probe):`), TOC-versjonen nevnt i meldingen.
 - Syntaks sjekkes lokalt med `luac -p *.lua` (Homebrew Lua 5.4, WoW er 5.1: ingen `//`, ingen `%x` med flyttall).
 - Aldri kode fra andre addons, heller ikke de som ligger installert på Windows-maskinen. Blizzards FrameXML er eneste referanse.
