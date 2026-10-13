@@ -15,6 +15,11 @@ local SAMPLE_QUESTS = {
     { id = 1486, title = "Deviate Hides" },
     { id = 914,  title = "Leaders of the Fang" },
     { id = 1014, title = "Arugal Must Die" },
+    -- Forever seems to have remade some vanilla quests under new IDs; the
+    -- vanilla "Wanted: Gath'Ilzogg" and a bogus ID show how the client
+    -- answers for a quest that does not exist.
+    { id = 169, title = "Wanted: Gath'Ilzogg (vanilla ID)" },
+    { id = 7999999, title = "bogus ID" },
 }
 
 -- Global paths to look up, grouped so the summary can say which areas
@@ -278,6 +283,34 @@ local function ProbeQuestLoad()
         for _, q in ipairs(SAMPLE_QUESTS) do
             Record("questTitleBefore", tostring(q.id), Try(C_QuestLog.GetTitleForQuestID, q.id))
         end
+    end
+    -- And again a few seconds later, whether or not the event fired.
+    if C_Timer and C_Timer.After then
+        C_Timer.After(5, function()
+            if not probe then return end
+            for _, q in ipairs(SAMPLE_QUESTS) do
+                local parts = {}
+                if C_QuestLog.GetTitleForQuestID then
+                    parts[#parts + 1] = "title " .. Try(C_QuestLog.GetTitleForQuestID, q.id)
+                end
+                if C_QuestLog.GetQuestDifficultyLevel then
+                    parts[#parts + 1] = "difficulty " .. Try(C_QuestLog.GetQuestDifficultyLevel, q.id)
+                end
+                if C_QuestLog.GetQuestTagInfo then
+                    parts[#parts + 1] = "tag " .. Try(function()
+                        local tag = C_QuestLog.GetQuestTagInfo(q.id)
+                        if type(tag) ~= "table" then return tag end
+                        return tostring(tag.tagID) .. "/" .. tostring(tag.tagName)
+                    end)
+                end
+                if HaveQuestData then
+                    parts[#parts + 1] = "haveData " .. Try(HaveQuestData, q.id)
+                end
+                Record("questTitleAfter5s", tostring(q.id), table.concat(parts, ", "))
+                print("  questTitleAfter5s." .. q.id .. " = " .. table.concat(parts, ", "))
+            end
+            UlDC.Print("late quest check done. /reload to write it to the saved variables.")
+        end)
     end
 end
 
