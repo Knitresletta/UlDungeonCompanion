@@ -30,7 +30,8 @@ local function ZoneFor(continent, x, y)
     local zone = C_Map.GetMapInfoAtPosition and C_Map.GetMapInfoAtPosition(continentMap, cx, cy)
     local mapID = zone and zone.mapID or continentMap
     local _, zpos = C_Map.GetMapPosFromWorldPos(continent, CreateVector2D(x, y), mapID)
-    local zx, zy = zpos and zpos:GetXY()
+    local zx, zy
+    if zpos then zx, zy = zpos:GetXY() end
     return mapID, zx, zy
 end
 

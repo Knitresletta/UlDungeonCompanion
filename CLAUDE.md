@@ -34,7 +34,7 @@ Forever-klienten (build 1.60.1.70338, Interface 16001) kjører retail 12.x sitt 
 - **Direkte til spillmaskinen** (på klart ja fra Jonatan, det er skriving på Windows): pakk zip med `--dry-run`, pakk ut i scratchpad, `scp -r UlDungeonCompanion win:C:/Users/knitr/claude/addon-staging/`, så over ssh `Copy-Item -Recurse -Force` fra staging til AddOns-mappa. scp klarer ikke mellomrommene i `Program Files (x86)`, derfor omveien. Ny TOC krever full omstart av spillet.
 - Utgivelse: `/package-addon`, beta uten å spørre, release krever klart ja. CurseForge-prosjekt 1743328 (`project_id` i `.curseforge.json`). Vakt på godkjenningskøen etter hver opplasting.
 - Versjon bumpes i TOC per endring, commit-meldinger med scope (`feat(pins):`, `fix(probe):`), TOC-versjonen nevnt i meldingen.
-- Syntaks sjekkes lokalt med `luac -p *.lua` (Homebrew Lua 5.4, WoW er 5.1: ingen `//`, ingen `%x` med flyttall).
+- Syntaks sjekkes lokalt med `luac -p *.lua` (Homebrew Lua 5.4, WoW er 5.1: ingen `//`, ingen `%x` med flyttall). Lua-felle som kostet 0.2.0 til 0.2.2: `local x, y = pos and pos:GetXY()` beholder bare første returverdi, y blir nil. Skriv `if pos then x, y = pos:GetXY() end`.
 - Aldri kode fra andre addons, heller ikke de som ligger installert på Windows-maskinen. Blizzards FrameXML er eneste referanse.
 
 ## Verifisert på Forever-klienten (probe 14.10.2026, build 1.60.1.70338, karakter nivå 29 Skyborne-druid, Alliance)

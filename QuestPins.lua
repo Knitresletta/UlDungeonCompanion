@@ -33,8 +33,10 @@ local function Place(mapID)
             for _, giver in ipairs(step.quest.g) do
                 for _, p in ipairs(giver.pos or {}) do
                     if p[1] == continentID then
+                        -- "pos and pos:GetXY()" would keep only the first value.
                         local _, pos = C_Map.GetMapPosFromWorldPos(continentID, CreateVector2D(p[2], p[3]), mapID)
-                        local x, y = pos and pos:GetXY()
+                        local x, y
+                        if pos then x, y = pos:GetXY() end
                         if x and y and x >= 0 and x <= 1 and y >= 0 and y <= 1 then
                             local entry
                             for _, e in ipairs(list) do
@@ -239,8 +241,9 @@ function UlDC.QuestPinDebug()
             local zone = "?"
             if continentMap then
                 local _, cpos = C_Map.GetMapPosFromWorldPos(continentID, CreateVector2D(pos[2], pos[3]), continentMap)
-                local cx, cy = cpos and cpos:GetXY()
-                local info = cx and C_Map.GetMapInfoAtPosition and C_Map.GetMapInfoAtPosition(continentMap, cx, cy)
+                local cx, cy
+                if cpos then cx, cy = cpos:GetXY() end
+                local info = cx and cy and C_Map.GetMapInfoAtPosition and C_Map.GetMapInfoAtPosition(continentMap, cx, cy)
                 zone = info and info.name or "?"
             end
             print(string.format("  %s (%d) by %s in %s%s", step.quest.t, step.quest.l, giver.n, zone,
