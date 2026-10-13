@@ -231,6 +231,16 @@ function UlDC.QuestDebug()
         tostring(me.race), me.class))
     local steps = UlDC.CurrentSteps()
     print("  current steps: " .. #steps)
+    -- Keep the steps and the character in the saved variables so they can
+    -- be read from the file after a /reload.
+    if UlDC.db then
+        local saved = { time = date("%Y-%m-%d %H:%M:%S"), level = me.level, side = me.side, class = me.class, steps = {} }
+        for _, step in ipairs(steps) do
+            saved.steps[#saved.steps + 1] = { id = step.id, goals = step.goals, hops = step.hops,
+                inLog = step.inLog, tooLow = step.tooLow }
+        end
+        UlDC.db.questDebug = saved
+    end
     for i, step in ipairs(steps) do
         if i > 25 then print("  ...") break end
         local goals = {}

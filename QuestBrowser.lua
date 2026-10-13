@@ -18,6 +18,7 @@ local rows = {}
 -- under a world position. Retail IDs, verified on Forever (Stormwind's
 -- parent is 1415).
 local CONTINENT_MAP = { [0] = 1415, [1] = 1414 }
+UlDC.CONTINENT_MAP = CONTINENT_MAP
 
 -- The zone map and normalized position for a giver's world position.
 local function ZoneFor(continent, x, y)

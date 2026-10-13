@@ -198,6 +198,9 @@ local function ProbeCompleted()
             if type(ids) ~= "table" then return ids end
             local first = {}
             for i = 1, math.min(10, #ids) do first[#first + 1] = tostring(ids[i]) end
+            -- The whole list too, for running the quest logic outside the game.
+            probe.completedAll = {}
+            for i, id in ipairs(ids) do probe.completedAll[i] = id end
             return #ids .. ": " .. table.concat(first, " ")
         end))
     end
@@ -332,7 +335,7 @@ function UlDC.RunProbe()
         print("  missing: " .. table.concat(missing, ", "))
     end
     for section, values in pairs(probe) do
-        if type(values) == "table" and section ~= "api" and section ~= "build" then
+        if type(values) == "table" and section ~= "api" and section ~= "build" and section ~= "completedAll" then
             local keys = {}
             for k in pairs(values) do keys[#keys + 1] = k end
             table.sort(keys)

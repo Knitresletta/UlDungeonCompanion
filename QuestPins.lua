@@ -229,6 +229,24 @@ function UlDC.QuestPinDebug()
         ok and tostring(#entries) or ("error " .. tostring(entries))))
     print(string.format("  steps: %d in all, %d with a giver on this continent, %d of those not in the log",
         #steps, onContinent, placeable))
+    -- Where each continent step's giver is, by zone, so an empty map can
+    -- be told apart from a placement fault.
+    local continentMap = UlDC.CONTINENT_MAP and UlDC.CONTINENT_MAP[continentID]
+    for _, step in ipairs(steps) do
+        local giver = step.quest.g and step.quest.g[1]
+        local pos = giver and giver.pos and giver.pos[1]
+        if pos and pos[1] == continentID then
+            local zone = "?"
+            if continentMap then
+                local _, cpos = C_Map.GetMapPosFromWorldPos(continentID, CreateVector2D(pos[2], pos[3]), continentMap)
+                local cx, cy = cpos and cpos:GetXY()
+                local info = cx and C_Map.GetMapInfoAtPosition and C_Map.GetMapInfoAtPosition(continentMap, cx, cy)
+                zone = info and info.name or "?"
+            end
+            print(string.format("  %s (%d) by %s in %s%s", step.quest.t, step.quest.l, giver.n, zone,
+                step.inLog and " (in log)" or ""))
+        end
+    end
     if ok then
         for i, e in ipairs(entries) do
             if i > 20 then print("  ...") break end
