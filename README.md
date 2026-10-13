@@ -14,7 +14,7 @@ Entrance positions come from the vanilla 1.12 area trigger tables and are projec
 
 **Quest Browser**: `/udc quests` (or the button in `/udc`) opens a window with the same steps grouped by the dungeon they lead to, then elite quests and raids. Hover a row for the chain, click it to open the map on the giver's zone with a waypoint.
 
-The quest data is generated from the vanilla 1.12 database by `tools/build_quests.py` (1400 quests: every dungeon, elite and raid quest plus every quest leading up to one, with givers and positions). Quests that are new in Forever are not in it yet.
+The quest data is generated from the vanilla 1.12 database by `tools/build_quests.py` (1400 quests: every dungeon, elite and raid quest plus every quest leading up to one, with givers and positions). Every quest the addon is about to show is checked against the server once: quests Forever has removed are hidden, and Forever's own title and level are used where they differ from the old data. The answers are kept between sessions and refreshed after a week. Quests that are new in Forever are not in the data yet.
 
 ## Planned
 

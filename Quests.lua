@@ -11,6 +11,13 @@
 -- that is not done: that is the step to show, with its giver. Goals in
 -- the same chain share the step, so one pin can lead to several goals.
 --
+-- Every goal and step is also checked against the server once
+-- (C_QuestLog.RequestLoadQuestByID): a quest the server has no data for
+-- is hidden as removed, and the server's title and level replace the
+-- data's, since Forever renames and retunes quests. The answers are kept
+-- in the saved variables (UlDungeonCompanionDB.server) and refreshed
+-- after a week.
+--
 -- UlDC.CurrentSteps() returns the list the pins and the browser draw.
 
 local RACE_BIT = { Human = 1, Orc = 2, Dwarf = 4, NightElf = 8, Scourge = 16, Tauren = 32, Gnome = 64, Troll = 128 }
@@ -99,6 +106,95 @@ local function Invalidate()
 end
 
 ------------------------------------------------------------------------
+-- Server facts
+------------------------------------------------------------------------
+
+local RECHECK_AFTER = 7 * 24 * 3600   -- seconds before a server answer is asked again
+local REQUEST_WAIT = 4                -- seconds to wait for QUEST_DATA_LOAD_RESULT
+local BATCH = 25                      -- requests per second at most
+
+local server            -- UlDC.db.server: id -> { t, l, tag, missing, seen }
+local pending = {}      -- id -> true while a request is out
+local queue = {}        -- ids waiting to be requested
+local queued = {}       -- set of the same
+local changeTimer       -- debounce for the refresh after answers arrive
+
+-- Reads what the client has about a quest. Returns false when it has
+-- nothing yet (or ever, for a quest that does not exist).
+local function ReadServer(id)
+    if HaveQuestData and not HaveQuestData(id) then return false end
+    local title = C_QuestLog.GetTitleForQuestID and C_QuestLog.GetTitleForQuestID(id)
+    if not title or title == "" then return false end
+    local level = C_QuestLog.GetQuestDifficultyLevel and C_QuestLog.GetQuestDifficultyLevel(id) or 0
+    local ok, tag = pcall(C_QuestLog.GetQuestTagInfo, id)
+    server[id] = { t = title, l = level > 0 and level or nil, tag = ok and tag and tag.tagID or nil, seen = time() }
+    return true
+end
+
+local function Changed()
+    if changeTimer then return end
+    changeTimer = C_Timer.NewTimer(0.5, function()
+        changeTimer = nil
+        if UlDC.RefreshQuests then UlDC.RefreshQuests() end
+    end)
+end
+
+local function Settle(id)
+    if not pending[id] then return end
+    pending[id] = nil
+    if not ReadServer(id) then
+        server[id] = { missing = true, seen = time() }
+    end
+    Changed()
+end
+
+local function SendBatch()
+    local sent = 0
+    while #queue > 0 and sent < BATCH do
+        local id = table.remove(queue, 1)
+        queued[id] = nil
+        if not ReadServer(id) then
+            pending[id] = true
+            pcall(C_QuestLog.RequestLoadQuestByID, id)
+            C_Timer.After(REQUEST_WAIT, function() Settle(id) end)
+            sent = sent + 1
+        end
+    end
+    if #queue > 0 then C_Timer.After(1, SendBatch) end
+end
+
+-- Asks the server about a quest unless a fresh answer is already kept.
+local function Validate(id)
+    if not server or not (C_QuestLog and C_QuestLog.RequestLoadQuestByID) then return end
+    local known = server[id]
+    if known and (time() - (known.seen or 0)) < RECHECK_AFTER then return end
+    if pending[id] or queued[id] then return end
+    queued[id] = true
+    queue[#queue + 1] = id
+    if #queue == 1 then C_Timer.After(0, SendBatch) end
+end
+
+local function IsMissing(id)
+    local known = server and server[id]
+    return known ~= nil and known.missing == true
+end
+
+-- Title and level with the server's answer first, the data's as fallback.
+function UlDC.QuestTitle(id)
+    local known = server and server[id]
+    if known and known.t then return known.t end
+    local q = UlDC.QUESTS[id]
+    return q and q.t or ("quest " .. id)
+end
+
+function UlDC.QuestLevel(id)
+    local known = server and server[id]
+    if known and known.l then return known.l end
+    local q = UlDC.QUESTS[id]
+    return q and q.l or 0
+end
+
+------------------------------------------------------------------------
 -- Steps
 ------------------------------------------------------------------------
 
@@ -117,8 +213,13 @@ local function FirstUndone(goalID)
     end
 end
 
-local function LevelFits(q, me)
-    return q.l >= me.level - LEVELS_BELOW and q.l <= me.level + LEVELS_ABOVE
+local function LevelFits(id, me)
+    local level = UlDC.QuestLevel(id)
+    return level >= me.level - LEVELS_BELOW and level <= me.level + LEVELS_ABOVE
+end
+
+local function GiverName(q)
+    return q.g and q.g[1] and q.g[1].n or q.gi or ""
 end
 
 -- Every step worth showing, one entry per step quest:
@@ -131,10 +232,12 @@ function UlDC.CurrentSteps()
     local byStep = {}
     local list = {}
     for id, q in pairs(UlDC.QUESTS) do
-        if q.f and Eligible(q, me) and LevelFits(q, me) and not IsCompleted(id) then
+        if q.f and Eligible(q, me) and LevelFits(id, me) and not IsCompleted(id) and not IsMissing(id) then
+            Validate(id)
             local stepID, hops = FirstUndone(id)
             local stepQ = stepID and UlDC.QUESTS[stepID]
-            if stepQ and Eligible(stepQ, me) then
+            if stepQ and Eligible(stepQ, me) and not IsMissing(stepID) then
+                Validate(stepID)
                 local step = byStep[stepID]
                 if not step then
                     step = { id = stepID, quest = stepQ, goals = {}, flags = 0, keys = {}, hops = 0,
@@ -149,12 +252,31 @@ function UlDC.CurrentSteps()
             end
         end
     end
+    -- Several quests with the same name from the same giver (the six
+    -- Sparklematic quests in Gnomeregan) collapse into one row.
+    local seen = {}
+    local deduped = {}
     for _, step in ipairs(list) do
-        table.sort(step.goals, function(a, b) return UlDC.QUESTS[a].l < UlDC.QUESTS[b].l end)
+        local key = UlDC.QuestTitle(step.id) .. "|" .. GiverName(step.quest)
+        local first = seen[key]
+        if first then
+            for _, g in ipairs(step.goals) do first.goals[#first.goals + 1] = g end
+            first.flags = bit.bor(first.flags, step.flags)
+            for k in pairs(step.keys) do first.keys[k] = true end
+            if step.hops > first.hops then first.hops = step.hops end
+        else
+            seen[key] = step
+            deduped[#deduped + 1] = step
+        end
+    end
+    list = deduped
+    for _, step in ipairs(list) do
+        table.sort(step.goals, function(a, b) return UlDC.QuestLevel(a) < UlDC.QuestLevel(b) end)
     end
     table.sort(list, function(a, b)
-        if a.quest.l ~= b.quest.l then return a.quest.l < b.quest.l end
-        return a.quest.t < b.quest.t
+        local la, lb = UlDC.QuestLevel(a.id), UlDC.QuestLevel(b.id)
+        if la ~= lb then return la < lb end
+        return UlDC.QuestTitle(a.id) < UlDC.QuestTitle(b.id)
     end)
     stepsCache, stepsVersion = list, cacheVersion
     return list
@@ -210,10 +332,20 @@ frame:RegisterEvent("QUEST_TURNED_IN")
 frame:RegisterEvent("QUEST_ACCEPTED")
 frame:RegisterEvent("QUEST_REMOVED")
 frame:RegisterEvent("PLAYER_LEVEL_UP")
-frame:SetScript("OnEvent", function(self, event)
+frame:RegisterEvent("QUEST_DATA_LOAD_RESULT")
+frame:SetScript("OnEvent", function(self, event, arg1, arg2)
     if event == "PLAYER_LOGIN" then
+        if UlDC.db then
+            UlDC.db.server = UlDC.db.server or {}
+            server = UlDC.db.server
+        end
         BuildIndex()
         Invalidate()
+    elseif event == "QUEST_DATA_LOAD_RESULT" then
+        if pending[arg1] then
+            if arg2 then Settle(arg1) end
+            -- A failed load is left to the timer: the data may still arrive.
+        end
     else
         Refresh()
     end
@@ -230,6 +362,12 @@ function UlDC.QuestDebug()
     UlDC.Print(string.format("%d quests in data; level %d, side %d, race %s, class %d", total, me.level, me.side,
         tostring(me.race), me.class))
     local steps = UlDC.CurrentSteps()
+    local answered, missing, waiting = 0, 0, 0
+    for _, v in pairs(server or {}) do
+        if v.missing then missing = missing + 1 else answered = answered + 1 end
+    end
+    for _ in pairs(pending) do waiting = waiting + 1 end
+    print(string.format("  server answers kept: %d, removed quests: %d, waiting: %d, queued: %d", answered, missing, waiting, #queue))
     print("  current steps: " .. #steps)
     -- Keep the steps and the character in the saved variables so they can
     -- be read from the file after a /reload.
@@ -244,9 +382,9 @@ function UlDC.QuestDebug()
     for i, step in ipairs(steps) do
         if i > 25 then print("  ...") break end
         local goals = {}
-        for _, g in ipairs(step.goals) do goals[#goals + 1] = UlDC.QUESTS[g].t .. " (" .. UlDC.QUESTS[g].l .. ")" end
+        for _, g in ipairs(step.goals) do goals[#goals + 1] = UlDC.QuestTitle(g) .. " (" .. UlDC.QuestLevel(g) .. ")" end
         local giver = step.quest.g and step.quest.g[1] and step.quest.g[1].n or (step.quest.gi and ("inside " .. step.quest.gi)) or "?"
-        print(string.format("  [%d] %s (%d) %s%s, giver %s -> %s", step.id, step.quest.t, step.quest.l,
+        print(string.format("  [%d] %s (%d) %s%s, giver %s -> %s", step.id, UlDC.QuestTitle(step.id), UlDC.QuestLevel(step.id),
             UlDC.FlagText(step.flags), step.inLog and ", in log" or (step.tooLow and ", too low" or ""), giver,
             table.concat(goals, "; ")))
     end

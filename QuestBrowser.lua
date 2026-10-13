@@ -159,14 +159,15 @@ local function Fill()
             local r = row()
             r.step = step
             local q = step.quest
-            local cr, cg, cb = UlDC.LevelColor(q.l)
-            local level = string.format("|cff%02x%02x%02x[%d]|r", math.floor(cr * 255), math.floor(cg * 255), math.floor(cb * 255), q.l)
+            local stepLevel = UlDC.QuestLevel(step.id)
+            local cr, cg, cb = UlDC.LevelColor(stepLevel)
+            local level = string.format("|cff%02x%02x%02x[%d]|r", math.floor(cr * 255), math.floor(cg * 255), math.floor(cb * 255), stepLevel)
             local goalNote = ""
             if step.hops > 0 then
                 goalNote = string.format(" |cff999999(+%d step%s)|r", step.hops, step.hops == 1 and "" or "s")
             end
             local state = step.inLog and "|cff66ccffin log|r" or (step.tooLow and ("|cffff6666needs " .. (q.m or 0) .. "|r") or "")
-            r.text:SetText(level .. " " .. q.t .. goalNote)
+            r.text:SetText(level .. " " .. UlDC.QuestTitle(step.id) .. goalNote)
             local giver = q.g and q.g[1]
             r.right:SetText(state ~= "" and state or (giver and giver.n or (q.gi and "inside") or ""))
         end

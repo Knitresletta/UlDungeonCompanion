@@ -115,20 +115,22 @@ end
 -- Tooltip lines for one step: the step itself, then what it leads to.
 function UlDC.AddStepLines(step, playerLevel)
     local q = step.quest
-    local r, g, b = UlDC.LevelColor(q.l)
-    GameTooltip:AddDoubleLine(q.t, "[" .. q.l .. "]", 1, 1, 1, r, g, b)
+    local level = UlDC.QuestLevel(step.id)
+    local r, g, b = UlDC.LevelColor(level)
+    GameTooltip:AddDoubleLine(UlDC.QuestTitle(step.id), "[" .. level .. "]", 1, 1, 1, r, g, b)
     if step.tooLow then
         GameTooltip:AddLine("  Requires level " .. (q.m or 0), 1, 0.3, 0.3)
     end
     for _, goalID in ipairs(step.goals) do
         if goalID ~= step.id then
             local goal = UlDC.QUESTS[goalID]
-            local gr, gg, gb = UlDC.LevelColor(goal.l)
+            local goalLevel = UlDC.QuestLevel(goalID)
+            local gr, gg, gb = UlDC.LevelColor(goalLevel)
             local where = {}
             for _, k in ipairs(goal.d or {}) do where[#where + 1] = UlDC.DungeonName(k) end
             local label = UlDC.FlagText(goal.f)
             if #where > 0 then label = label .. ": " .. table.concat(where, ", ") end
-            GameTooltip:AddDoubleLine("  leads to " .. goal.t, "[" .. goal.l .. "] " .. label, 0.8, 0.8, 0.8, gr, gg, gb)
+            GameTooltip:AddDoubleLine("  leads to " .. UlDC.QuestTitle(goalID), "[" .. goalLevel .. "] " .. label, 0.8, 0.8, 0.8, gr, gg, gb)
         else
             local where = {}
             for _, k in ipairs(q.d or {}) do where[#where + 1] = UlDC.DungeonName(k) end
@@ -246,7 +248,7 @@ function UlDC.QuestPinDebug()
                 local info = cx and cy and C_Map.GetMapInfoAtPosition and C_Map.GetMapInfoAtPosition(continentMap, cx, cy)
                 zone = info and info.name or "?"
             end
-            print(string.format("  %s (%d) by %s in %s%s", step.quest.t, step.quest.l, giver.n, zone,
+            print(string.format("  %s (%d) by %s in %s%s", UlDC.QuestTitle(step.id), UlDC.QuestLevel(step.id), giver.n, zone,
                 step.inLog and " (in log)" or ""))
         end
     end
@@ -254,7 +256,7 @@ function UlDC.QuestPinDebug()
         for i, e in ipairs(entries) do
             if i > 20 then print("  ...") break end
             local titles = {}
-            for _, s in ipairs(e.steps) do titles[#titles + 1] = s.quest.t end
+            for _, s in ipairs(e.steps) do titles[#titles + 1] = UlDC.QuestTitle(s.id) end
             print(string.format("  %s at %.3f, %.3f: %s", tostring(e.giver), e.x, e.y, table.concat(titles, "; ")))
         end
     end

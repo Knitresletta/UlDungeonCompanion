@@ -55,6 +55,14 @@ ALLIANCE_FACTIONS = {11, 12, 53, 55, 57, 64, 80, 84, 96, 122, 123, 124, 231, 534
 HORDE_FACTIONS = {29, 68, 83, 104, 118, 125, 126, 876, 995, 1174}
 RACES_ALLIANCE, RACES_HORDE = 77, 178
 
+# Quest -> creature that gives it, for quests the relation tables miss
+# (given through gossip scripts). Disciple of Naralex stands inside the
+# Wailing Caverns.
+GIVER_OVERRIDES = {
+    1500: 3678,   # Waking Naralex
+    999: 3678,    # When Dreams Turn to Nightmares
+}
+
 TYPE_ELITE, TYPE_RAID, TYPE_DUNGEON = 1, 62, 81
 FLAG_DUNGEON, FLAG_ELITE, FLAG_RAID = 1, 2, 4
 
@@ -186,6 +194,9 @@ def main():
     for entry, it in items.items():
         if it["start_quest"]:
             starters[it["start_quest"]].append(("i", entry))
+    for quest, creature in GIVER_OVERRIDES.items():
+        if not starters.get(quest):
+            starters[quest].append(("c", creature))
 
     if args.check:
         by_area = defaultdict(Counter)
