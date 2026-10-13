@@ -1,0 +1,15 @@
+## Interface: 16001
+## Title: UlDungeonCompanion
+## Notes: Finds the dungeons, dungeon quests and elite quests that fit your level, on the world map and in a browser window. For players who want to level on their own but not miss the group content.
+## Author: knitresletta
+## Version: 0.1.0
+## Category: Knitresletta
+## IconAtlas: Dungeon
+## SavedVariables: UlDungeonCompanionDB
+
+Core.lua
+DungeonData.lua
+DungeonPins.lua
+DungeonPins.xml
+Probe.lua
+Options.lua

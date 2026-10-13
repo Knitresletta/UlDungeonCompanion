@@ -1,0 +1,6 @@
+# Packager output
+.release/
+dist/
+
+# OS
+.DS_Store

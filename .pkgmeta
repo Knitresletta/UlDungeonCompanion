@@ -1,0 +1,11 @@
+package-as: UlDungeonCompanion
+
+ignore:
+  - .pkgmeta
+  - .gitignore
+  - .gitattributes
+  - .github
+  - .curseforge.json
+  - README.md
+  - CLAUDE.md
+  - tools

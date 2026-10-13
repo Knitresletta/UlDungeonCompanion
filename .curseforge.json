@@ -1,0 +1,15 @@
+{
+  "project_id": "",
+  "default_release_type": "beta",
+  "default_game_versions": [
+    "1.60.1"
+  ],
+  "exclude": [
+    "README.md",
+    "CLAUDE.md",
+    ".pkgmeta",
+    ".gitattributes",
+    ".gitignore",
+    "tools/*"
+  ]
+}
