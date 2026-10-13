@@ -51,4 +51,4 @@ Rådata: `/tmp/udc/UlDungeonCompanion-sv.lua` fra den økta, kjør probe på nyt
 ## Status
 
 - 13.10.2026: 0.1.0 stillas skrevet, lagt på GitHub og CurseForge (prosjektet venter på moderasjon), kopiert direkte til spillmaskinen.
-- 14.10.2026: probe kjørt og lest (se over). Addonen laster. Pins på kartet ikke sett ennå (skjermbilde mangler). Neste: verifiser pin-plassering på Westfall-kartet, så datagenerator for quests fra vmangos.
+- 14.10.2026: probe kjørt og lest (se over). Addonen laster. Deadmines-pinnen sett på Westfall-kartet (winshot): vmangos-verdenskoordinater projiseres riktig på Forevers kart, målestokken stemmer med vanilla. Trigger-posisjonen er portalen under bakken, så 0.1.1 flyttet pinnene til Meeting Stones (gameobject-tabellen) der de finnes. Forever-ny dungeon nærmest Stormwind: **Hall of Thanes** (ikke i noen database, testcase for læring av innganger). Neste: datagenerator for quests fra vmangos.
