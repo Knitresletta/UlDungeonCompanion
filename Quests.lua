@@ -125,6 +125,8 @@ local function ReadServer(id)
     if HaveQuestData and not HaveQuestData(id) then return false end
     local title = C_QuestLog.GetTitleForQuestID and C_QuestLog.GetTitleForQuestID(id)
     if not title or title == "" then return false end
+    -- "<UNUSED>" and friends: the server knows the ID but the quest is a placeholder.
+    if title:sub(1, 1) == "<" then return false end
     local level = C_QuestLog.GetQuestDifficultyLevel and C_QuestLog.GetQuestDifficultyLevel(id) or 0
     local ok, tag = pcall(C_QuestLog.GetQuestTagInfo, id)
     server[id] = { t = title, l = level > 0 and level or nil, tag = ok and tag and tag.tagID or nil, seen = time() }

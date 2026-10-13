@@ -268,13 +268,18 @@ def main():
                 flags |= FLAG_DUNGEON
         info[qid] = {"flags": flags, "keys": keys, "giver_inside": giver_inside}
 
+    # Placeholder quests ("<UNUSED>", "<NYI> <TXT> ...") exist in the
+    # database but not on a live server. Skip them, and stop chains there.
+    def placeholder(qid):
+        return (quests[qid]["Title"] or "").startswith("<")
+
     # Select: dungeon, elite and raid quests, then every prerequisite.
-    selected = {qid for qid, i in info.items() if i["flags"]}
+    selected = {qid for qid, i in info.items() if i["flags"] and not placeholder(qid)}
     stack = list(selected)
     while stack:
         qid = stack.pop()
         prev = abs(quests[qid]["PrevQuestId"])
-        if prev and prev in quests and prev not in selected:
+        if prev and prev in quests and prev not in selected and not placeholder(prev):
             selected.add(prev)
             stack.append(prev)
 
