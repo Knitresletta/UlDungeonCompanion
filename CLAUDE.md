@@ -35,6 +35,20 @@ Forever-klienten (build 1.60.1.70338, Interface 16001) kjører retail 12.x sitt 
 - Syntaks sjekkes lokalt med `luac -p *.lua` (Homebrew Lua 5.4, WoW er 5.1: ingen `//`, ingen `%x` med flyttall).
 - Aldri kode fra andre addons, heller ikke de som ligger installert på Windows-maskinen. Blizzards FrameXML er eneste referanse.
 
+## Verifisert på Forever-klienten (probe 14.10.2026, build 1.60.1.70338, karakter nivå 29 Skyborne-druid, Alliance)
+
+Rådata: `/tmp/udc/UlDungeonCompanion-sv.lua` fra den økta, kjør probe på nytt for fersk fil.
+
+- **Quests utenfor loggen kan slås opp.** `C_QuestLog.IsQuestFlaggedCompleted(id)` svarer riktig for vilkårlige vanilla-id-er (166, 1486, 2040 true; 914, 1014 false), `GetAllCompletedQuestIDs` ga 254 id-er. `GetTitleForQuestID(id)` ga tittel for alle fem prøve-id-ene før noen forespørsel. `RequestLoadQuestByID` + `QUEST_DATA_LOAD_RESULT` virker: quest 166 ga tag 81/"Dungeon", `GetQuestDifficultyLevel` 22, `GetQuestObjectives` 1 mål. Tag-id-ene matcher vanilla `Type` (81 dungeon, 1 elite/group, 62 raid).
+- **Questklassifisering** (`C_QuestInfoSystem.GetQuestClassification`) er 7 (Normal) også for dungeonquests; bruk tag, ikke klassifisering.
+- **Forever har nye quests med høye id-er** (98815 "Highland Hides") og en ny rase, **Skyborne** (Alliance, kan være druid). vmangos-data dekker ikke disse, og vanilla-rasemasker kjenner ikke Skyborne: filtrer på fraksjon, bruk rasemaske bare for rasespesifikke quests.
+- **Kart:** retail-kart-id-er (Stormwind 1453, Eastern Kingdoms 1415). `C_Map.GetMapPosFromWorldPos`, `SetUserWaypoint` og `CanSetUserWaypointOnMap` (true) finnes. `C_EncounterJournal.GetDungeonEntrancesForMap` finnes men ga 0 i Stormwind (Stockade), og `EJ_GetNumTiers` er 0: ingen journal-data, spillet tegner ikke innganger selv. Våre pins trengs.
+- **Atlas** Dungeon, Raid, QuestNormal, QuestDaily, QuestLegendary, QuestRepeatableTurnin, poi-door, Waypoint-MapPin-Untracked, UI-QuestPoi-OuterGlow finnes. `GetQuestDifficultyColor` gir grå, grønn, gul, oransje, rød som forventet.
+- **Questlogg:** `C_QuestLog.GetInfo` gir questID, level, difficultyLevel, questClassification, suggestedGroup. Classic-funksjonene `GetNumQuestLogEntries`/`GetQuestLogTitle`/`GetQuestGreenRange` finnes ikke.
+- **Mangler:** `C_TaskQuest.GetQuestsForPlayerByMapID`, `C_QuestHub`, `LFGListFrame` (ingen gruppefinner-ramme), `C_QuestLine.GetAvailableQuestLines` ga 0 (finnes, men tomt i Stormwind).
+- **Gossip:** `C_GossipInfo.GetAvailableQuests`/`GetActiveQuests` og `GetQuestID` finnes, grunnlaget for læring i spill.
+
 ## Status
 
-- 13.10.2026: 0.1.0 stillas skrevet. Ingenting verifisert i spill ennå. Neste: Jonatan kjører `/udc probe` og `/udc pins` på et sonekart, jeg henter probe-fila, så designes questdataen.
+- 13.10.2026: 0.1.0 stillas skrevet, lagt på GitHub og CurseForge (prosjektet venter på moderasjon), kopiert direkte til spillmaskinen.
+- 14.10.2026: probe kjørt og lest (se over). Addonen laster. Pins på kartet ikke sett ennå (skjermbilde mangler). Neste: verifiser pin-plassering på Westfall-kartet, så datagenerator for quests fra vmangos.
