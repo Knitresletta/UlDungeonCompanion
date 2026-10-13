@@ -5,6 +5,7 @@
     "1.60.1"
   ],
   "exclude": [
+    "media/*.png",
     "README.md",
     "CLAUDE.md",
     ".pkgmeta",
