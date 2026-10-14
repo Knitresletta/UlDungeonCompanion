@@ -538,7 +538,8 @@ local function Fill()
             h.highlight:Hide()
             h:EnableMouse(false)
             h.label:SetFontObject("GameFontHighlightSmall")
-            h.label:SetText("|cffffd100" .. source.n .. "|r |cff999999(level " .. source.l .. ")|r")
+            local level = source.l and source.l > 0 and (" |cff999999(level " .. source.l .. ")|r") or " |cff999999(chest)|r"
+            h.label:SetText("|cffffd100" .. source.n .. "|r" .. level)
             for _, item in ipairs(source.items) do
                 local r = row(STEP_H, INDENT * 2)
                 r.item, r.source = item, source.n

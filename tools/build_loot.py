@@ -8,7 +8,13 @@ an uncommon item at 10 % or more or a rare-or-better item at 3 % or more.
 That picks the bosses and the named mini-bosses without a boss flag in
 the data (Edwin VanCleef is rank 2, Rhahk'Zor rank 1) and leaves out the
 trash mobs with their fractions of a percent for random world drops.
-Quest drops (negative chance) are not loot.
+Bosses the instance scripts spawn (Grubbis, Sneed, Mutanus, Kirtonos,
+the Blackrock Depths arena) have no spawn row, so BOSSES lists them by
+hand, and lists the few spawned bosses whose drops fall under the source
+threshold (Rhahk'Zor). Once a creature is a source, its rare-or-better
+items from 1 % and uncommon items from 3 % are kept. Quest drops
+(negative chance) are not loot. Chests (gameobject type 3) spawned in
+the instance go through the same sieve, with level 0.
 
 Chance: a loot row is a straight percentage, or a group where exactly one
 member drops and members without a chance share what is left equally. A
@@ -35,8 +41,37 @@ MAP_KEY = {
     531: "aq40", 533: "naxx",
 }
 
-MIN_CHANCE = {2: 10.0, 3: 3.0, 4: 3.0, 5: 3.0}   # quality -> lowest chance kept
+SOURCE_MIN = {2: 10.0, 3: 3.0, 4: 3.0, 5: 3.0}   # quality -> chance that makes a creature a source
+KEEP_MIN = {2: 3.0, 3: 1.0, 4: 1.0, 5: 1.0}       # quality -> lowest chance kept for a source
 MAX_ITEMS_PER_SOURCE = 40
+
+# Creatures that belong to an instance without a spawn row there (spawned
+# by the instance script or an event) or whose drops fall under the
+# source threshold. creature_template entries.
+BOSSES = {
+    "deadmines": [643, 644],                 # Sneed, Rhahk'Zor
+    "wc": [3654],                            # Mutanus the Devourer
+    "gnomeregan": [7361],                    # Grubbis
+    "rfd": [7355, 7356],                     # Tuten'kash, Plaguemaw the Rotting
+    "zf": [7273, 7275],                      # Gahz'rilla, Shadowpriest Sezz'ziz
+    "st": [8443],                            # Avatar of Hakkar
+    "brd": [9027, 9028, 9029, 9030, 9031, 9032, 9537, 10076],
+                                             # the arena: Gorosh, Grizzle, Eviscerator, Ok'thor, Anub'shiah, Hedrum;
+                                             # Hurley Blackbreath, High Priestess of Thaurissan
+    "brs": [9596, 10263, 10264, 10268, 10339, 10584],
+                                             # Bannok Grimaxe, Burning Felguard, Solakar Flamewreath, Gizrul, Gyth, Urok Doomhowl
+    "scholo": [1853, 10506, 14516],          # Darkmaster Gandling, Kirtonos the Herald, Death Knight Darkreaver
+    "strat": [10439, 10516, 10808, 10813, 11120, 11121, 11143],
+                                             # Ramstein, The Unforgiven, Timmy the Cruel, Balnazzar,
+                                             # Crimson Hammersmith, Black Guard Swordsmith, Postmaster Malown
+    "dm": [14506],                           # Lord Hel'nurath
+    "zg": [14515, 15082, 15083, 15084, 15085],
+                                             # High Priestess Arlokk; Edge of Madness: Gri'lek, Hazza'rah, Renataki, Wushoolay
+    "bwl": [11583, 12463, 12464, 12465],     # Nefarian; Death Talon Flamescale, Seether, Wyrmkin
+    "mc": [11502],                           # Ragnaros
+    "aq40": [15517],                         # Ouro
+    "naxx": [15989],                         # Sapphiron
+}
 
 
 def lua_str(s):
@@ -106,7 +141,9 @@ def main():
     creatures = latest_rows(conn, "creature_template", "entry")
     items = latest_rows(conn, "item_template", "entry")
     creature_loot = loot_table(conn, "creature_loot_template")
+    gameobject_loot = loot_table(conn, "gameobject_loot_template")
     refs = loot_table(conn, "reference_loot_template")
+    chests = latest_rows(conn, "gameobject_template", "entry")
 
     # Which creatures stand in which instance.
     in_map = defaultdict(set)
@@ -115,30 +152,56 @@ def main():
         if map_id in MAP_KEY:
             in_map[MAP_KEY[map_id]].add(cid)
 
+    # Chests spawned in each instance, keyed like the creatures.
+    go_cols = [r[1] for r in conn.execute("pragma table_info(gameobject)")]
+    go_where = "where patch_min <= ? and patch_max >= ?" if "patch_min" in go_cols else ""
+    go_args = (PATCH, PATCH) if go_where else ()
+    go_in_map = defaultdict(set)
+    for gid, map_id in conn.execute(f"select distinct id, map from gameobject {go_where}", go_args):
+        if map_id in MAP_KEY:
+            go_in_map[MAP_KEY[map_id]].add(gid)
+
     per_key = {}
-    for key, cids in in_map.items():
+    for key in sorted(set(in_map) | set(BOSSES) | set(go_in_map)):
+        cids = set(in_map.get(key, ())) | set(BOSSES.get(key, ()))
         sources = []
-        for cid in cids:
-            ct = creatures.get(cid)
-            if not ct or not ct["loot_id"]:
-                continue
-            drops = resolve(creature_loot.get(ct["loot_id"], []), refs)
+        candidates = [("c", cid) for cid in cids] + [("g", gid) for gid in go_in_map.get(key, ())]
+        for kind, cid in candidates:
+            if kind == "c":
+                ct = creatures.get(cid)
+                if not ct or not ct["loot_id"]:
+                    continue
+                drops = resolve(creature_loot.get(ct["loot_id"], []), refs)
+            else:
+                ct = chests.get(cid)
+                if not ct or ct["type"] != 3 or not ct["data1"]:
+                    continue
+                if ct["name"].endswith((" Vein", " Deposit")):
+                    continue        # mining nodes are chests too
+                ct = {"name": ct["name"], "level_max": 0}
+                drops = resolve(gameobject_loot.get(chests[cid]["data1"], []), refs)
+            is_source = kind == "c" and cid in BOSSES.get(key, ())
             kept = []
             for item_id, chance in drops.items():
                 it = items.get(item_id)
                 if not it:
                     continue
                 q = it["quality"]
-                if q in MIN_CHANCE and chance >= MIN_CHANCE[q]:
+                # A chest has to hold something rare; herbs and the odd
+                # green are not worth a line.
+                if q in SOURCE_MIN and chance >= SOURCE_MIN[q] and (kind == "c" or q >= 3):
+                    is_source = True
+                if q in KEEP_MIN and chance >= KEEP_MIN[q]:
                     kept.append((item_id, it, chance))
-            if not kept:
+            if not is_source or not kept:
                 continue
             kept.sort(key=lambda t: (-t[1]["quality"], -t[2], t[1]["name"]))
             sources.append({
                 "id": cid, "name": ct["name"], "level": ct["level_max"],
                 "items": kept[:MAX_ITEMS_PER_SOURCE],
             })
-        sources.sort(key=lambda s: (s["level"], s["name"]))
+        # Chests (level 0) after the creatures.
+        sources.sort(key=lambda s: (s["level"] == 0, s["level"], s["name"]))
         per_key[key] = sources
         if args.stats:
             n_items = sum(len(s["items"]) for s in sources)
