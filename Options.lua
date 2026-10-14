@@ -1,5 +1,6 @@
--- Options: a window with one checkbox per feature and a button per
--- command, opened with /udc.
+-- Options: the Settings window, one checkbox per feature and a button
+-- per labeled command. Opened from the Settings button in the hub
+-- (Hub.lua) or with /udc settings; /udc itself opens the hub.
 --
 -- Built from BasicFrameTemplateWithInset and UICheckButtonTemplate so it
 -- looks like the rest of the game's windows. Features and commands come
@@ -117,7 +118,7 @@ local function CreateWindow()
     if f.CloseButton then f.CloseButton:SetScript("OnClick", function() f:Hide() end) end
 
     local title = f.TitleText or (f.TitleContainer and f.TitleContainer.TitleText)
-    if title then title:SetText(UlDC.name .. " " .. UlDC.Version()) end
+    if title then title:SetText(UlDC.name .. " settings") end
 
     local y = -32
     for _, g in ipairs(groups) do
@@ -149,7 +150,7 @@ local function CreateWindow()
 
     local hint = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     hint:SetPoint("BOTTOM", f, "BOTTOM", 0, 11)
-    hint:SetText("Chat works too: /udc <feature> toggles, /udc help lists every command.")
+    hint:SetText("Chat works too: /udc <feature> toggles, /udc settings opens this, /udc help lists every command.")
 
     f:SetScript("OnShow", function() if UlDC.RefreshOptions then UlDC.RefreshOptions() end end)
     -- A new frame is visible from the start; hide it so the first toggle

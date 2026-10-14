@@ -12,7 +12,7 @@ Entrance positions come from the vanilla 1.12 area trigger tables and are projec
 
 **Quest Givers**: The givers of the dungeon quests and elite quests you can go for, as quest markers on zone maps: pastel pink with a small dungeon or raid badge for steps that lead into an instance, pastel light blue for elite quests in the open world. A dungeon quest is any quest, or any quest chain, that at some point requires entering an instance. The whole chain counts, and the marker points at the first step you have not done yet, so a chain that ends in the Deadmines starts with its first quest in Westfall. The tooltip lists the step, what it leads to and in which instance, with levels in the game's difficulty colors. Quests you have already completed are left out (the client knows, even for quests never in your log), and so are steps already in your log, since the game tracks those itself. Faction, race and class restrictions come from the data, your character's from the client. Shown are goals from eight levels below you to six above. Clicking a marker sets a waypoint.
 
-**Quest Browser**: `/udc quests` (or the button in `/udc`) opens a window with the same steps grouped by the dungeon they lead to, then elite quests and raids. Hover a row for the chain, click it to open the map on the giver's zone with a waypoint.
+**Hub**: `/udc` opens one window that answers "what can I do now?" the moment it opens. Every dungeon and raid your faction can enter is listed once, sorted by level, under "For you now" (fits or easy), "Soon" (within five levels), and "Later" and "Outgrown" folded into a line of names each (click the heading to unfold). A row shows the level range in the colors above, the zone and how many quest steps lead there; click it to fold the quests out underneath, hover a quest for the chain, click it to open the map on the giver with a waypoint. The Map button opens the map on the entrance. Elite quests in the open world have a row of their own. The feature switches live behind the Settings button.
 
 The quest data is generated from the vanilla 1.12 database by `tools/build_quests.py` (1400 quests: every dungeon, elite and raid quest plus every quest leading up to one, with givers and positions). Every quest the addon is about to show is checked against the server once: quests Forever has removed are hidden, and Forever's own title and level are used where they differ from the old data. The answers are kept between sessions and refreshed after a week.
 
@@ -24,13 +24,14 @@ Quests that are new in Forever (the new dungeons' quests and the reworked chains
 
 ## Commands
 
-Type `/udc` to open the options window. Every feature can also be toggled from chat, and `/udc help` prints the full command list.
+Type `/udc` to open the hub. Every feature can also be toggled from chat, and `/udc help` prints the full command list.
 
 | Command | Description |
 |---------|-------------|
 | `/udc dungeonpins` | Toggle dungeon entrance pins on the world map |
 | `/udc questpins` | Toggle quest giver markers on zone maps |
-| `/udc quests` | Open or close the quest browser |
+| `/udc quests` | Open or close the hub (same as `/udc`) |
+| `/udc settings` | Open or close the settings window |
 | `/udc qd` | Print the current quest steps and the character filters |
 | `/udc qpins` | Print quest marker diagnostics for the open map |
 | `/udc dungeons` | Print the dungeons and raids sorted by level, colored for your level |

@@ -39,8 +39,12 @@ MAP_KEY = {
 RAID_KEYS = {"onyxia", "mc", "bwl", "zg", "aq20", "aq40", "naxx"}
 
 # Quest log sort (ZoneOrSort, positive = area ID) -> dungeon key, for the
-# instance areas. Cross-checked against the objectives by --check.
+# instance areas. Cross-checked against the objectives by --check. Two
+# outdoor areas sort under the instance's name in the quest log and hold
+# nothing but its quests: 133 Gnomeregan (the surface area in Dun Morogh,
+# where Tinkmaster Overspark's chains live) and 19 Zul'Gurub.
 AREA_KEY = {
+    133: "gnomeregan", 19: "zg",
     2437: "rfc", 718: "wc", 1581: "deadmines", 209: "sfk", 717: "stockade", 719: "bfd",
     721: "gnomeregan", 1717: "rfk", 796: "sm", 722: "rfd", 1517: "uldaman", 978: "zf",
     2100: "maraudon", 1417: "st", 1584: "brd", 1583: "brs", 2057: "scholo", 2017: "strat",

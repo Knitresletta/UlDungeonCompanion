@@ -36,7 +36,7 @@ function UlDC.Print(text)
     print("|cff66ccff" .. UlDC.name .. "|r: " .. text)
 end
 
--- Every toggleable feature. Options.lua draws one checkbox per entry;
+-- Every toggleable feature. Options.lua (Settings) draws one checkbox per entry;
 -- /udc <key> toggles it from chat. desc is the one-line explanation shown
 -- next to the checkbox and in /udc help.
 local FEATURES = {
@@ -49,8 +49,10 @@ UlDC.FEATURES = FEATURES
 -- Commands that are not on/off switches. Options.lua shows a button for
 -- the ones with a label.
 local COMMANDS = {
-    { key = "quests", label = "Quests", desc = "open the quest browser: dungeon and elite quests for your level, by dungeon",
-      fn = function() if UlDC.ToggleQuestBrowser then UlDC.ToggleQuestBrowser() end end },
+    { key = "quests", desc = "open the hub (same as /udc): dungeons and quests for your level",
+      fn = function() if UlDC.ToggleHub then UlDC.ToggleHub() end end },
+    { key = "settings", desc = "open the settings window: feature switches and tools",
+      fn = function() if UlDC.ToggleOptions then UlDC.ToggleOptions() end end },
     { key = "qd", desc = "print the current quest steps and the character filters",
       fn = function() if UlDC.QuestDebug then UlDC.QuestDebug() end end },
     { key = "qpins", desc = "print quest pin diagnostics for the open map",
@@ -65,7 +67,7 @@ local COMMANDS = {
 UlDC.COMMANDS = COMMANDS
 
 local function PrintHelp()
-    UlDC.Print("/udc opens the options window. Chat commands:")
+    UlDC.Print("/udc opens the hub. Chat commands:")
     for _, f in ipairs(FEATURES) do
         local state = UlDC.enabled[f.key] and "|cff00ff00on|r" or "|cffff4444off|r"
         print("  /udc " .. f.key .. ": " .. f.label .. " (" .. state .. "): " .. f.desc)
@@ -79,6 +81,7 @@ end
 local function NotifyModules()
     if UlDC.RefreshDungeonPins then UlDC.RefreshDungeonPins() end
     if UlDC.RefreshQuestPins then UlDC.RefreshQuestPins() end
+    if UlDC.RefreshHub then UlDC.RefreshHub() end
     if UlDC.RefreshOptions then UlDC.RefreshOptions() end
 end
 
@@ -100,7 +103,9 @@ SLASH_ULDUNGEONCOMPANION2 = "/dungeoncompanion"
 SlashCmdList["ULDUNGEONCOMPANION"] = function(msg)
     local cmd = strtrim(msg):lower()
     if cmd == "" then
-        if UlDC.ToggleOptions then UlDC.ToggleOptions() else PrintHelp() end
+        if UlDC.ToggleHub then UlDC.ToggleHub()
+        elseif UlDC.ToggleOptions then UlDC.ToggleOptions()
+        else PrintHelp() end
         return
     end
     if cmd == "help" then
@@ -130,7 +135,7 @@ frame:SetScript("OnEvent", function(self, event, arg1)
         InitDB()
         self:UnregisterEvent("ADDON_LOADED")
     elseif event == "PLAYER_LOGIN" then
-        UlDC.Print(UlDC.Version() .. " loaded. Type |cffffcc00/udc|r for options.")
+        UlDC.Print(UlDC.Version() .. " loaded. Type |cffffcc00/udc|r for the hub.")
         self:UnregisterEvent("PLAYER_LOGIN")
     end
 end)

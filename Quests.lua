@@ -18,7 +18,7 @@
 -- in the saved variables (UlDungeonCompanionDB.server) and refreshed
 -- after a week.
 --
--- UlDC.CurrentSteps() returns the list the pins and the browser draw.
+-- UlDC.CurrentSteps() returns the list the pins and the hub draw.
 
 local RACE_BIT = { Human = 1, Orc = 2, Dwarf = 4, NightElf = 8, Scourge = 16, Tauren = 32, Gnome = 64, Troll = 128 }
 local CLASS_BIT = { WARRIOR = 1, PALADIN = 2, HUNTER = 4, ROGUE = 8, PRIEST = 16, SHAMAN = 64, MAGE = 128, WARLOCK = 256, DRUID = 1024 }
@@ -39,7 +39,7 @@ end
 
 -- Givers from Forever data carry map percentages (mp = { mapID, x, y })
 -- instead of world positions. The client converts them once at login, so
--- the pins and the browser only ever see pos = { continent, x, y }.
+-- the pins and the hub only ever see pos = { continent, x, y }.
 local function ResolveMapPositions()
     if not (C_Map and C_Map.GetWorldPosFromMapPos and CreateVector2D) then return end
     for _, q in pairs(UlDC.QUESTS) do
@@ -353,7 +353,7 @@ end
 local function Refresh()
     Invalidate()
     if UlDC.RefreshQuestPins then UlDC.RefreshQuestPins() end
-    if UlDC.RefreshQuestBrowser then UlDC.RefreshQuestBrowser() end
+    if UlDC.RefreshHub then UlDC.RefreshHub() end
 end
 UlDC.RefreshQuests = Refresh
 
