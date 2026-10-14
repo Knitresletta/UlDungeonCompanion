@@ -1,5 +1,6 @@
--- Zone Labels: the level range of a zone under its name when the mouse
--- rests on it on a continent map, colored for the player's level.
+-- Zone Labels: the level range and territory of a zone under its name
+-- when the mouse rests on it on a continent map, colored for the
+-- player's level.
 --
 -- The retail map already has the mechanism: an area label frame that
 -- shows the zone name and, when C_Map.GetMapLevels knows a range, a
@@ -31,12 +32,13 @@ local function RangeText(levels)
     return "Level " .. levels[1] .. "-" .. levels[2]
 end
 
--- Colored "Level x-y" for a zone entry, plus the fit word and color so
--- tooltips can lay it out their own way.
+-- Colored "Level x-y" for a zone entry, with the territory in grey after
+-- it, plus the fit word and color so tooltips can lay it out their own way.
 function UlDC.ZoneLevelText(zone, playerLevel)
     local fit, r, g, b = UlDC.LevelFit(zone.levels, playerLevel)
     local text = string.format("|cff%02x%02x%02x%s|r", math.floor(r * 255 + 0.5), math.floor(g * 255 + 0.5),
         math.floor(b * 255 + 0.5), RangeText(zone.levels))
+    if zone.territory then text = text .. ", |cffb0b0b0" .. zone.territory .. "|r" end
     return text, fit, r, g, b
 end
 
@@ -207,7 +209,7 @@ function UlDC.PrintZoneList()
         return
     end
     local mode = gameLabel and "game label hooked" or (ownLabel and "own label" or "no label yet")
-    UlDC.Print(string.format("%d zone maps, %s. Ranges are the classic ones.", #maps, mode))
+    UlDC.Print(string.format("%d zone maps, %s. Ranges and territory from the Forever client (via ForeverChanges).", #maps, mode))
     local unknown = {}
     for _, m in ipairs(maps) do
         if m.zone then

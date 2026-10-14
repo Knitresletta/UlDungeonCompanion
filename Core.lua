@@ -43,7 +43,7 @@ end
 local FEATURES = {
     { key = "dungeonpins", group = "Map", label = "Dungeon Entrances", desc = "Every dungeon and raid entrance on the world map, with its level range." },
     { key = "questpins",   group = "Map", label = "Quest Givers",      desc = "Givers of the dungeon and elite quests you can go for, on zone maps." },
-    { key = "zonelevels",  group = "Map", label = "Zone Levels",       desc = "Level range of a zone under its name on continent maps, and in dungeon tooltips." },
+    { key = "zonelevels",  group = "Map", label = "Zone Levels",       desc = "Level range and territory of a zone under its name on continent maps, and in dungeon tooltips." },
 }
 UlDC.FEATURE_GROUPS = { "Map" }
 UlDC.FEATURES = FEATURES
