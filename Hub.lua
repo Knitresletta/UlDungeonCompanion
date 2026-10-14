@@ -15,8 +15,10 @@
 -- level in the game's difficulty color, title, giver or state. Hovering
 -- a step shows the chain, clicking it opens the world map on the giver
 -- with a waypoint. The Map button on a dungeon row does the same for the
--- entrance. The Loot button folds out the notable drops inside
--- (UlDC.LOOT, see tools/build_loot.py): one line per creature, its items
+-- entrance. The Loot button folds out the drops inside: Forever's own
+-- lists from ForeverChanges where they exist (UlDC.LOOT_FOREVER, see
+-- tools/fetch_loot.py, dungeons only), else the vanilla loot tables
+-- (UlDC.LOOT, tools/build_loot.py, the raids): one line per creature, its items
 -- in quality colors with slot and drop chance, dimmed when the character
 -- cannot use them. Hovering an item shows the game's item tooltip,
 -- clicking it puts the link in an open chat box. Settings (the feature
@@ -211,19 +213,21 @@ local WEARS = {
     PRIEST = { [1] = 1 }, MAGE = { [1] = 1 }, WARLOCK = { [1] = 1 },
 }
 
+-- Forever data carries the slot as text in field 9; vanilla data the
+-- inventory type number in field 7.
 local function SlotText(item)
     local class, sub, inv = item[5], item[6], item[7]
+    local slot = (item[9] and item[9] ~= "") and item[9] or SLOT[inv]
     if class == 4 then
         local kind = ARMOR[sub]
-        local slot = SLOT[inv]
         if kind and slot and sub >= 1 and sub <= 4 then return kind .. " " .. slot:lower() end
         return kind or slot or ""
     elseif class == 2 then
-        return WEAPON[sub] or SLOT[inv] or "Weapon"
+        return WEAPON[sub] or slot or "Weapon"
     elseif class == 9 then
         return "Recipe"
     end
-    return SLOT[inv] or ""
+    return slot or ""
 end
 
 -- Whether the character can use the item, as far as class and armor type
@@ -254,7 +258,12 @@ local function ItemTooltip(self)
         GameTooltip:AddLine((QUALITY_COLOR[item[3]] or "") .. item[2] .. "|r")
         GameTooltip:AddLine(SlotText(item), 0.8, 0.8, 0.8)
     end
-    GameTooltip:AddLine(string.format("Drops from %s, about %d%%", self.source or "?", item[4]), 0.6, 0.8, 1)
+    if item[4] and item[4] > 0 then
+        GameTooltip:AddLine(string.format("Drops from %s, about %g%%", self.source or "?", item[4]), 0.6, 0.8, 1)
+    else
+        GameTooltip:AddLine("Drops from " .. (self.source or "?"), 0.6, 0.8, 1)
+    end
+    if item[10] == "new" then GameTooltip:AddLine("New in Forever", 0.4, 1, 0.4) end
     if not Usable(item) then GameTooltip:AddLine("Not for your class", 1, 0.4, 0.4) end
     GameTooltip:Show()
 end
@@ -523,7 +532,8 @@ local function Fill()
     -- The notable drops inside one instance: a line per creature, its
     -- items underneath.
     local function lootRows(d)
-        local sources = UlDC.LOOT and UlDC.LOOT[d.key]
+        local sources = UlDC.LOOT_FOREVER and UlDC.LOOT_FOREVER[d.key]
+        if not sources or #sources == 0 then sources = UlDC.LOOT and UlDC.LOOT[d.key] end
         if not sources or #sources == 0 then
             local r = row(STEP_H, INDENT)
             r.highlight:Hide()
@@ -538,8 +548,11 @@ local function Fill()
             h.highlight:Hide()
             h:EnableMouse(false)
             h.label:SetFontObject("GameFontHighlightSmall")
-            local level = source.l and source.l > 0 and (" |cff999999(level " .. source.l .. ")|r") or " |cff999999(chest)|r"
-            h.label:SetText("|cffffd100" .. source.n .. "|r" .. level)
+            local parts = {}
+            if source.w then parts[#parts + 1] = source.w end
+            if source.kind == "rare" then parts[#parts + 1] = "rare spawn" end
+            if source.l and source.l > 0 then parts[#parts + 1] = "level " .. source.l else parts[#parts + 1] = "chest" end
+            h.label:SetText("|cffffd100" .. source.n .. "|r |cff999999(" .. table.concat(parts, ", ") .. ")|r")
             if #source.items == 0 then
                 local r = row(STEP_H, INDENT * 2)
                 r.highlight:Hide()
@@ -556,10 +569,12 @@ local function Fill()
                 local usable = Usable(item)
                 local name = (QUALITY_COLOR[item[3]] or "") .. item[2] .. "|r"
                 if not usable then name = "|cff777777" .. item[2] .. "|r" end
+                if item[10] == "new" then name = name .. " |cff66ff66new|r" end
                 r.label:SetText(name)
                 r.right:SetPoint("RIGHT", r, "RIGHT", 0, 0)
                 r.right:SetWidth(STATE_W - 2)
-                r.right:SetText(string.format("%s%s  %d%%|r", usable and "|cffb0b0b0" or "|cff777777", SlotText(item), item[4]))
+                local chance = (item[4] and item[4] > 0) and string.format("  %g%%", item[4]) or ""
+                r.right:SetText((usable and "|cffb0b0b0" or "|cff777777") .. SlotText(item) .. chance .. "|r")
             end
         end
     end
