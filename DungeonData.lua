@@ -114,8 +114,8 @@ UlDC.DUNGEONS = {
     -- Riverglades), Alcaz Prison (48-53, Dustwallow), Blackmaw Hold (55-60,
     -- Azshara), Shaper's Terrace (58-60, Un'Goro).
     { key = "hot", name = "The Hall of Thanes", kind = "dungeon", levels = { 13, 18 }, zone = "Ironforge", forever = true,
-      map = 1455, mx = 77.1, my = 51.3,
-      note = "Beneath Old Ironforge: throne room, passage on the left, stairs down. Horde has to get through the city." },
+      map = 1455, mx = 43.5, my = 52.0, label = "Passage from the High Seat",
+      note = "Enter the throne room, turn left into the web-covered passage, follow the stairs down past the lava to the bridge. Horde has to get through the city." },
     { key = "rol", name = "Ruins of Lordaeron", kind = "dungeon", levels = { 15, 20 }, zone = "Tirisfal Glades", forever = true,
       map = 1420, mx = 63.3, my = 67.5, note = "The ruined capital above the Undercity." },
     { key = "excav", name = "Excavation Site: Wetlands", kind = "dungeon", levels = { 26, 31 }, zone = "Wetlands", forever = true,
