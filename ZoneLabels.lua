@@ -84,11 +84,15 @@ UlDC.ZoneMaps = BindZones
 
 local function FindGameLabel()
     if not (WorldMapFrame and type(WorldMapFrame.dataProviders) == "table") then return nil end
+    -- The retail provider keeps its frame in Label (probe 14.10.2026 on
+    -- Forever: a provider with the fields Label and owningMap).
     for provider in pairs(WorldMapFrame.dataProviders) do
-        local label = type(provider) == "table" and provider.AreaLabel
-        if type(label) == "table" and type(label.EvaluateLabels) == "function"
-            and label.Name and label.Description then
-            return label
+        if type(provider) == "table" then
+            local label = provider.Label or provider.AreaLabel
+            if type(label) == "table" and type(label.EvaluateLabels) == "function"
+                and label.Name and label.Description then
+                return label
+            end
         end
     end
     return nil

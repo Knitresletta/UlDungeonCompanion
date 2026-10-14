@@ -252,6 +252,21 @@ local function ProbeZones()
             end
         end
         Record("areaLabel", "found", "no; providers: " .. #names .. " " .. table.concat(names, " "))
+        -- A provider with a Label that did not pass the field check: list
+        -- its fields so the finder can be adjusted.
+        if WorldMapFrame and type(WorldMapFrame.dataProviders) == "table" then
+            for provider in pairs(WorldMapFrame.dataProviders) do
+                local candidate = type(provider) == "table" and (provider.Label or provider.AreaLabel)
+                if type(candidate) == "table" then
+                    local keys = {}
+                    for k, v in pairs(candidate) do
+                        if type(k) == "string" then keys[#keys + 1] = k .. ":" .. type(v) end
+                    end
+                    table.sort(keys)
+                    Record("areaLabel", "candidate", table.concat(keys, " "))
+                end
+            end
+        end
     end
 end
 
