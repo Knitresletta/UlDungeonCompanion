@@ -2,7 +2,7 @@
 
 A companion for **World of Warcraft: Forever** players who want to level on their own terms but not miss the group content. It finds the dungeons, dungeon quests and elite quests that fit your level and shows them on the world map and in a browser window. Every feature can be switched off, and settings persist between sessions.
 
-> **Status:** 0.4.0, tested on the Forever beta client (build 1.60.1). Dungeon entrances and quest markers are verified in game. Forever's own dungeons and quests are included from community data and being tested.
+> **Status:** 0.5.0, first release, tested on the Forever beta client (build 1.60.1). Dungeon entrances and quest markers are verified in game. Forever's own dungeons and quests come from community data (see below) and grow with the beta.
 
 ## Features
 
