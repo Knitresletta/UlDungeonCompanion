@@ -199,11 +199,28 @@ local function SetIcon(texture, kind)
     return false
 end
 
+-- On continent maps the pins are drawn smaller than on zone maps, where
+-- the full atlas size stays (Jonatan's call, 14.10.2026).
+local CONTINENT_SCALE = 0.75
+
+local function PinScale(map)
+    local mapID = map and map.GetMapID and map:GetMapID()
+    local info = mapID and C_Map.GetMapInfo(mapID)
+    if info and info.mapType == Enum.UIMapType.Continent then return CONTINENT_SCALE end
+    return 1
+end
+
 function UlDCDungeonPinMixin:OnAcquired(entry)
     self.entry = entry
     local ok, err = pcall(function()
         SetIcon(self.Texture, entry.node.kind)
         SetIcon(self.Highlight, entry.node.kind)
+        local scale = PinScale(self:GetMap())
+        if scale ~= 1 then
+            local w, h = self.Texture:GetSize()
+            self.Texture:SetSize(w * scale, h * scale)
+            self.Highlight:SetSize(w * scale, h * scale)
+        end
         self:SetSize(self.Texture:GetSize())
         local fit = UlDC.LevelFit(entry.node.levels)
         self.Texture:SetDesaturated(fit == "outgrown")
