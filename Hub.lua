@@ -10,8 +10,8 @@
 -- world get a row of their own under "For you now".
 --
 -- A dungeon row shows the level range, the zone and how many quest steps
--- lead there (UlDC.CurrentSteps, see Quests.lua). Clicking the row folds
--- the steps out underneath, the same rows the old quest browser had:
+-- lead there (UlDC.CurrentSteps, see Quests.lua). Every row starts
+-- folded; clicking it folds the steps out underneath, the same rows the old quest browser had:
 -- level in the game's difficulty color, title, giver or state. Hovering
 -- a step shows the chain, clicking it marks the giver on the map (own
 -- markers, see Marks.lua, as many as wanted) and opens the map there; a
@@ -137,11 +137,11 @@ local function Model()
     return list, pseudo, #steps
 end
 
+-- Every row starts folded (Jonatan's call, 15.10.2026); the window
+-- remembers what the player opens for the rest of the session.
 local function IsExpanded(d, section)
     if expanded[d.key] ~= nil then return expanded[d.key] end
-    -- Folded out by default only where it matters most: the rows at the
-    -- top that actually have quests.
-    return section.key == "now" and #d.steps > 0
+    return false
 end
 
 ------------------------------------------------------------------------
