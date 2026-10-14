@@ -165,6 +165,14 @@ end
 
 UlDCMarkPinMixin = CreateFromMixins(MapCanvasPinMixin)
 
+-- The map canvas lets right-clicks fall through pins so a right-click
+-- zooms the map out; this pin wants them itself. Cleared on load and
+-- again on every acquire, since the canvas sets the pass-through after
+-- creating a pin.
+local function KeepRightClicks(pin)
+    if pin.SetPassThroughButtons then pcall(pin.SetPassThroughButtons, pin) end
+end
+
 function UlDCMarkPinMixin:OnLoad()
     self:SetScalingLimits(1, 1.0, 1.2)
     -- Above the quest and entrance pins, since a mark sits on top of one.
@@ -173,10 +181,12 @@ function UlDCMarkPinMixin:OnLoad()
             self:UseFrameLevelType("PIN_FRAME_LEVEL_FLIGHT_POINT")
         end
     end
+    KeepRightClicks(self)
 end
 
 function UlDCMarkPinMixin:OnAcquired(entry)
     self.entry = entry
+    KeepRightClicks(self)
     local ok, err = pcall(function()
         if C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(ATLAS) then
             self.Texture:SetAtlas(ATLAS, true)
@@ -210,6 +220,16 @@ end
 function UlDCMarkPinMixin:OnMouseClickAction(button)
     if button ~= "RightButton" then return end
     UlDC.ToggleMark(self.entry.key)
+end
+
+-- The canvas routes clicks to OnMouseClickAction through OnMouseUp; take
+-- the right button here too, in case that route only carries the left.
+function UlDCMarkPinMixin:OnMouseUp(button, upInside)
+    if button == "RightButton" and upInside ~= false then
+        UlDC.ToggleMark(self.entry.key)
+        return
+    end
+    if MapCanvasPinMixin.OnMouseUp then MapCanvasPinMixin.OnMouseUp(self, button, upInside) end
 end
 
 ------------------------------------------------------------------------
