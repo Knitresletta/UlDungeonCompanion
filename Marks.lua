@@ -6,9 +6,9 @@
 -- label and a world position (continent, x, y), or a map position
 -- (map, mx, my in percent) for Forever entrances, resolved on first draw.
 -- A MapCanvasDataProvider projects every mark onto whatever map is open,
--- zone or continent, the way the dungeon pins are placed. Clicking a
--- marker on the map removes it; a quest mark goes away by itself once
--- the quest is done. Nothing here touches the game's own waypoint.
+-- zone or continent, the way the dungeon pins are placed. A marker stays
+-- until it is right-clicked (Jonatan's call, 15.10.2026); a quest mark
+-- also goes away by itself once the quest is done. Nothing here touches the game's own waypoint.
 
 local PIN_TEMPLATE = "UlDCMarkPinTemplate"
 local ATLAS = "Waypoint-MapPin-Untracked"
@@ -199,7 +199,7 @@ function UlDCMarkPinMixin:OnMouseEnter()
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
     GameTooltip:AddLine(mark.label or "Marker", 1, 1, 1)
     if mark.note then GameTooltip:AddLine(mark.note, 0.8, 0.8, 0.8) end
-    GameTooltip:AddLine("Click to remove the marker", 0.4, 0.8, 1)
+    GameTooltip:AddLine("Right-click to remove the marker", 0.4, 0.8, 1)
     GameTooltip:Show()
 end
 
@@ -208,7 +208,7 @@ function UlDCMarkPinMixin:OnMouseLeave()
 end
 
 function UlDCMarkPinMixin:OnMouseClickAction(button)
-    if button ~= "LeftButton" then return end
+    if button ~= "RightButton" then return end
     UlDC.ToggleMark(self.entry.key)
 end
 

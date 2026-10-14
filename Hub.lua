@@ -17,7 +17,8 @@
 -- markers, see Marks.lua, as many as wanted) and opens the map there; a
 -- step whose giver stands inside the instance, or that starts from an
 -- item found there, marks the entrance instead. The Map button on a
--- dungeon row marks the entrance. The Loot button folds out the drops inside: Forever's own
+-- dungeon row marks the entrance. On the map a marker stays until it is
+-- right-clicked. The Loot button folds out the drops inside: Forever's own
 -- lists from ForeverChanges where they exist (UlDC.LOOT_FOREVER, see
 -- tools/fetch_loot.py, dungeons only), else the vanilla loot tables
 -- (UlDC.LOOT, tools/build_loot.py, the raids): one line per creature, its items
