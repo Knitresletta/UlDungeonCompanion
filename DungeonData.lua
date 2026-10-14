@@ -119,7 +119,7 @@ UlDC.DUNGEONS = {
     { key = "rol", name = "Ruins of Lordaeron", kind = "dungeon", levels = { 15, 20 }, zone = "Tirisfal Glades", forever = true,
       map = 1420, mx = 63.3, my = 67.5, note = "The ruined capital above the Undercity." },
     { key = "excav", name = "Excavation Site: Wetlands", kind = "dungeon", levels = { 26, 31 }, zone = "Wetlands", forever = true,
-      map = 1437, mx = 24.5, my = 73.4, note = "Above Whelgar's Excavation. Position from the client's map pin, not yet walked." },
+      map = 1437, mx = 30.4, my = 40.0, note = "At Whelgar's Excavation Site, east of Menethil Harbor.", },
     { key = "dalaran", name = "City of Dalaran", kind = "dungeon", levels = { 28, 33 }, zone = "Silverpine Forest", forever = true,
       map = 1421, mx = 69.6, my = 46.1, label = "Sewer gate",
       note = "Through the sewers; the gate needs the Dalaran Sewer Key (Heart of Disruption). Alliance enters from inside the city." },
