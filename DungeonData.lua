@@ -105,4 +105,22 @@ UlDC.DUNGEONS = {
       continent = 1, x = -8230.40, y = 2005.33 },
     { key = "naxx", name = "Naxxramas", kind = "raid", levels = { 60, 60 }, entry = 51, zone = "Eastern Plaguelands",
       continent = 0, x = 3133.15, y = -3730.29 },
+
+    -- Forever additions. Positions are map percentages on retail map IDs
+    -- (map, mx, my), read from the beta client by ForeverDB
+    -- (https://foreverdb.net) and converted at runtime. Level ranges are
+    -- Blizzard's. Five more are announced but not open in the beta yet:
+    -- The Drowned City (35-40, Stranglethorn), Krol'dok Stronghold (40-45,
+    -- Riverglades), Alcaz Prison (48-53, Dustwallow), Blackmaw Hold (55-60,
+    -- Azshara), Shaper's Terrace (58-60, Un'Goro).
+    { key = "hot", name = "The Hall of Thanes", kind = "dungeon", levels = { 13, 18 }, zone = "Ironforge", forever = true,
+      map = 1455, mx = 77.1, my = 51.3,
+      note = "Beneath Old Ironforge: throne room, passage on the left, stairs down. Horde has to get through the city." },
+    { key = "rol", name = "Ruins of Lordaeron", kind = "dungeon", levels = { 15, 20 }, zone = "Tirisfal Glades", forever = true,
+      map = 1420, mx = 63.3, my = 67.5, note = "The ruined capital above the Undercity." },
+    { key = "excav", name = "Excavation Site: Wetlands", kind = "dungeon", levels = { 26, 31 }, zone = "Wetlands", forever = true,
+      map = 1437, mx = 24.5, my = 73.4, note = "Above Whelgar's Excavation. Position from the client's map pin, not yet walked." },
+    { key = "dalaran", name = "City of Dalaran", kind = "dungeon", levels = { 28, 33 }, zone = "Silverpine Forest", forever = true,
+      map = 1421, mx = 69.6, my = 46.1, label = "Sewer gate",
+      note = "Through the sewers; the gate needs the Dalaran Sewer Key (Heart of Disruption). Alliance enters from inside the city." },
 }

@@ -54,8 +54,24 @@ end
 
 -- Projects every node with a continent and world position onto the map
 -- and returns the ones that land inside it, with normalized coordinates.
+-- Forever-only entrances are stored as map percentages (map, mx, my);
+-- turn them into world positions the first time they are needed.
+local function ResolveNodes()
+    if not (C_Map.GetWorldPosFromMapPos and CreateVector2D) then return end
+    for _, node in ipairs(UlDC.DUNGEONS) do
+        if node.map and not node.x then
+            local continentID, world = C_Map.GetWorldPosFromMapPos(node.map, CreateVector2D(node.mx / 100, node.my / 100))
+            if continentID and world then
+                local wx, wy = world:GetXY()
+                if wx and wy then node.continent, node.x, node.y = continentID, wx, wy end
+            end
+        end
+    end
+end
+
 local function ProjectNodes(mapID)
     local list = {}
+    ResolveNodes()
     local mapInfo = C_Map.GetMapInfo(mapID)
     local tooBig = mapInfo and (mapInfo.mapType == Enum.UIMapType.World or mapInfo.mapType == Enum.UIMapType.Cosmic)
     local continentID = (not tooBig) and C_Map.GetWorldPosFromMapPos(mapID, CreateVector2D(0.5, 0.5))

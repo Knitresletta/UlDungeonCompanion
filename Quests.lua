@@ -31,6 +31,35 @@ UlDC.FLAG_DUNGEON, UlDC.FLAG_ELITE, UlDC.FLAG_RAID = FLAG_DUNGEON, FLAG_ELITE, F
 -- below the lower bound are long grey, above the upper bound not yet.
 local LEVELS_BELOW, LEVELS_ABOVE = 8, 6
 
+-- Forever's own quests (QuestDataForever.lua, see tools/fetch_forever.py)
+-- join the vanilla table; vanilla wins when both know an ID.
+for id, q in pairs(UlDC.QUESTS_FOREVER or {}) do
+    if not UlDC.QUESTS[id] then UlDC.QUESTS[id] = q end
+end
+
+-- Givers from Forever data carry map percentages (mp = { mapID, x, y })
+-- instead of world positions. The client converts them once at login, so
+-- the pins and the browser only ever see pos = { continent, x, y }.
+local function ResolveMapPositions()
+    if not (C_Map and C_Map.GetWorldPosFromMapPos and CreateVector2D) then return end
+    for _, q in pairs(UlDC.QUESTS) do
+        for _, g in ipairs(q.g or {}) do
+            if g.mp and not g.pos then
+                local pos = {}
+                for _, mp in ipairs(g.mp) do
+                    local continentID, world = C_Map.GetWorldPosFromMapPos(mp[1], CreateVector2D(mp[2] / 100, mp[3] / 100))
+                    if continentID and world then
+                        local wx, wy = world:GetXY()
+                        if wx and wy then pos[#pos + 1] = { continentID, wx, wy } end
+                    end
+                end
+                g.pos = pos
+            end
+        end
+    end
+end
+UlDC.ResolveMapPositions = ResolveMapPositions
+
 local completedCache = {}
 local cacheVersion = 0
 local exclusive = {}     -- exclusive group -> { questID, ... }
@@ -337,6 +366,7 @@ frame:RegisterEvent("PLAYER_LEVEL_UP")
 frame:RegisterEvent("QUEST_DATA_LOAD_RESULT")
 frame:SetScript("OnEvent", function(self, event, arg1, arg2)
     if event == "PLAYER_LOGIN" then
+        ResolveMapPositions()
         if UlDC.db then
             UlDC.db.server = UlDC.db.server or {}
             server = UlDC.db.server
