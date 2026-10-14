@@ -127,11 +127,6 @@ function UlDCQuestPinMixin:OnAcquired(entry)
     self:SetPosition(entry.x, entry.y)
 end
 
-function UlDCQuestPinMixin:CanSetWaypoint()
-    local map = self:GetMap()
-    return map ~= nil and C_Map.SetUserWaypoint ~= nil and C_Map.CanSetUserWaypointOnMap ~= nil
-        and C_Map.CanSetUserWaypointOnMap(map:GetMapID())
-end
 
 -- Tooltip lines for one step: the step itself, then what it leads to.
 function UlDC.AddStepLines(step, playerLevel)
@@ -169,9 +164,8 @@ function UlDCQuestPinMixin:OnMouseEnter()
     for _, step in ipairs(self.entry.steps) do
         UlDC.AddStepLines(step, level)
     end
-    if self:CanSetWaypoint() then
-        GameTooltip:AddLine("Click to set a waypoint", 0.4, 0.8, 1)
-    end
+    local first = self.entry.steps[1]
+    GameTooltip:AddLine(first and UlDC.IsMarked("q" .. first.id) and "Click to remove the marker" or "Click to mark on the map", 0.4, 0.8, 1)
     GameTooltip:Show()
 end
 
@@ -179,13 +173,13 @@ function UlDCQuestPinMixin:OnMouseLeave()
     GameTooltip:Hide()
 end
 
+-- A click marks the giver (own marker, see Marks.lua) or takes the mark away.
 function UlDCQuestPinMixin:OnMouseClickAction(button)
-    if button ~= "LeftButton" or not self:CanSetWaypoint() then return end
-    local point = { uiMapID = self:GetMap():GetMapID(), position = CreateVector2D(self.entry.x, self.entry.y) }
-    local ok = pcall(C_Map.SetUserWaypoint, point)
-    if ok and C_SuperTrack and C_SuperTrack.SetSuperTrackedUserWaypoint then
-        C_SuperTrack.SetSuperTrackedUserWaypoint(true)
-    end
+    if button ~= "LeftButton" then return end
+    local first = self.entry.steps[1]
+    if not first then return end
+    local _, _, mark = UlDC.StepLocation(first)
+    UlDC.ToggleMark("q" .. first.id, mark)
 end
 
 ------------------------------------------------------------------------

@@ -313,6 +313,35 @@ function UlDC.CurrentSteps()
     return list
 end
 
+-- Where a step is on the world: its giver, or the entrance of the
+-- instance it starts inside (a giver standing in the instance, or a
+-- quest started by an item found there). Returns the kind ("giver" or
+-- "entrance"), a name, and a mark table for Marks.lua; nil when nothing
+-- is known.
+function UlDC.StepLocation(step)
+    local q = step.quest
+    local giver = q.g and q.g[1]
+    local p = giver and giver.pos and giver.pos[1]
+    if p then
+        return "giver", giver.n, { label = giver.n, note = UlDC.QuestTitle(step.id), quest = step.id,
+                                   continent = p[1], x = p[2], y = p[3] }
+    end
+    local key = q.gi or (q.d and q.d[1]) or (q.cd and q.cd[1])
+    if not key then
+        for k in pairs(step.keys or {}) do key = k break end
+    end
+    local node
+    for _, d in ipairs(UlDC.DUNGEONS or {}) do
+        if d.key == key then node = d break end
+    end
+    if not node then return nil end
+    local mark = UlDC.EntranceMark and UlDC.EntranceMark(node)
+    if not mark then return nil end
+    mark.note = UlDC.QuestTitle(step.id) .. ", starts inside"
+    mark.quest = step.id
+    return "entrance", node.name, mark
+end
+
 function UlDC.DungeonName(key)
     for _, d in ipairs(UlDC.DUNGEONS) do
         if d.key == key then return d.name end

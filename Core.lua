@@ -51,6 +51,10 @@ UlDC.FEATURES = FEATURES
 local COMMANDS = {
     { key = "quests", desc = "open the hub (same as /udc): dungeons and quests for your level",
       fn = function() if UlDC.ToggleHub then UlDC.ToggleHub() end end },
+    { key = "marks", desc = "list the map markers set from the hub and the pins",
+      fn = function() if UlDC.PrintMarks then UlDC.PrintMarks() end end },
+    { key = "clearmarks", desc = "remove every map marker",
+      fn = function() if UlDC.ClearMarks then UlDC.ClearMarks() end UlDC.Print("map markers cleared.") end },
     { key = "settings", desc = "open the settings window: feature switches and tools",
       fn = function() if UlDC.ToggleOptions then UlDC.ToggleOptions() end end },
     { key = "qd", desc = "print the current quest steps and the character filters",
@@ -81,6 +85,7 @@ end
 local function NotifyModules()
     if UlDC.RefreshDungeonPins then UlDC.RefreshDungeonPins() end
     if UlDC.RefreshQuestPins then UlDC.RefreshQuestPins() end
+    if UlDC.RefreshMarks then UlDC.RefreshMarks() end
     if UlDC.RefreshHub then UlDC.RefreshHub() end
     if UlDC.RefreshOptions then UlDC.RefreshOptions() end
 end

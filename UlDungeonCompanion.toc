@@ -2,7 +2,7 @@
 ## Title: UlDungeonCompanion
 ## Notes: Finds the dungeons, dungeon quests and elite quests that fit your level, on the world map and in one hub window. For players who want to level on their own but not miss the group content.
 ## Author: knitresletta
-## Version: 0.11.0
+## Version: 0.12.0
 ## Category: Knitresletta
 ## IconTexture: Interface\AddOns\UlDungeonCompanion\media\icon
 ## SavedVariables: UlDungeonCompanionDB
@@ -18,6 +18,8 @@ QuestDataForever.lua
 Quests.lua
 QuestPins.lua
 QuestPins.xml
+Marks.lua
+Marks.xml
 Hub.lua
 Probe.lua
 Options.lua

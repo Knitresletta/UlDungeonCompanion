@@ -233,11 +233,6 @@ function UlDCDungeonPinMixin:OnAcquired(entry)
     self:SetPosition(entry.x, entry.y)
 end
 
-function UlDCDungeonPinMixin:CanSetWaypoint()
-    local map = self:GetMap()
-    return map ~= nil and C_Map.SetUserWaypoint ~= nil and C_Map.CanSetUserWaypointOnMap ~= nil
-        and C_Map.CanSetUserWaypointOnMap(map:GetMapID())
-end
 
 function UlDCDungeonPinMixin:OnMouseEnter()
     local node = self.entry.node
@@ -246,9 +241,7 @@ function UlDCDungeonPinMixin:OnMouseEnter()
     if node.label then title = title .. " (" .. node.label .. ")" end
     GameTooltip:AddLine(title, 1, 1, 1)
     AddLevelLines(node)
-    if self:CanSetWaypoint() then
-        GameTooltip:AddLine("Click to set a waypoint", 0.4, 0.8, 1)
-    end
+    GameTooltip:AddLine(UlDC.IsMarked("e" .. node.key) and "Click to remove the marker" or "Click to mark on the map", 0.4, 0.8, 1)
     GameTooltip:Show()
 end
 
@@ -256,13 +249,11 @@ function UlDCDungeonPinMixin:OnMouseLeave()
     GameTooltip:Hide()
 end
 
+-- A click marks the entrance (own marker, see Marks.lua) or takes the mark away.
 function UlDCDungeonPinMixin:OnMouseClickAction(button)
-    if button ~= "LeftButton" or not self:CanSetWaypoint() then return end
-    local point = { uiMapID = self:GetMap():GetMapID(), position = CreateVector2D(self.entry.x, self.entry.y) }
-    local ok = pcall(C_Map.SetUserWaypoint, point)
-    if ok and C_SuperTrack and C_SuperTrack.SetSuperTrackedUserWaypoint then
-        C_SuperTrack.SetSuperTrackedUserWaypoint(true)
-    end
+    if button ~= "LeftButton" then return end
+    local node = self.entry.node
+    UlDC.ToggleMark("e" .. node.key, UlDC.EntranceMark(node))
 end
 
 ------------------------------------------------------------------------

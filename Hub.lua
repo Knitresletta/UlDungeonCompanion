@@ -13,9 +13,11 @@
 -- lead there (UlDC.CurrentSteps, see Quests.lua). Clicking the row folds
 -- the steps out underneath, the same rows the old quest browser had:
 -- level in the game's difficulty color, title, giver or state. Hovering
--- a step shows the chain, clicking it opens the world map on the giver
--- with a waypoint. The Map button on a dungeon row does the same for the
--- entrance. The Loot button folds out the drops inside: Forever's own
+-- a step shows the chain, clicking it marks the giver on the map (own
+-- markers, see Marks.lua, as many as wanted) and opens the map there; a
+-- step whose giver stands inside the instance, or that starts from an
+-- item found there, marks the entrance instead. The Map button on a
+-- dungeon row marks the entrance. The Loot button folds out the drops inside: Forever's own
 -- lists from ForeverChanges where they exist (UlDC.LOOT_FOREVER, see
 -- tools/fetch_loot.py, dungeons only), else the vanilla loot tables
 -- (UlDC.LOOT, tools/build_loot.py, the raids): one line per creature, its items
@@ -38,12 +40,7 @@ local rows = {}
 local expanded = {}       -- dungeon key -> true/false once the player has clicked
 local unfolded = {}       -- section key -> true when a folded section is open
 local lootOpen = {}       -- dungeon key -> true while its loot is folded out
-
--- Continent instance ID -> the continent's uiMapID, used to find the zone
--- under a world position. Retail IDs, verified on Forever (Stormwind's
--- parent is 1415). QuestPins reads this too.
-local CONTINENT_MAP = { [0] = 1415, [1] = 1414 }
-UlDC.CONTINENT_MAP = CONTINENT_MAP
+local MARK = "|A:Waypoint-MapPin-Untracked:14:14|a"   -- glyph for a marked row
 
 local SECTIONS = {
     { key = "now",      title = "For you now", fits = { fits = true, easy = true } },
@@ -56,55 +53,19 @@ local SECTIONS = {
 -- Map
 ------------------------------------------------------------------------
 
--- The zone map and normalized position for a world position.
-local function ZoneFor(continent, x, y)
-    local continentMap = CONTINENT_MAP[continent]
-    if not continentMap then return nil end
-    local _, pos = C_Map.GetMapPosFromWorldPos(continent, CreateVector2D(x, y), continentMap)
-    if not pos then return nil end
-    local cx, cy = pos:GetXY()
-    local zone = C_Map.GetMapInfoAtPosition and C_Map.GetMapInfoAtPosition(continentMap, cx, cy)
-    local mapID = zone and zone.mapID or continentMap
-    local _, zpos = C_Map.GetMapPosFromWorldPos(continent, CreateVector2D(x, y), mapID)
-    local zx, zy
-    if zpos then zx, zy = zpos:GetXY() end
-    return mapID, zx, zy
+-- Marks the step's location (giver or entrance) and opens the map there;
+-- a second click takes the mark away again.
+local function ToggleStep(step)
+    local kind, _, mark = UlDC.StepLocation(step)
+    if not kind then return end
+    if UlDC.ToggleMark("q" .. step.id, mark) then UlDC.ShowMark(mark) end
 end
 
-local function OpenMapAt(mapID, x, y)
-    if OpenWorldMap then
-        OpenWorldMap(mapID)
-    elseif WorldMapFrame then
-        WorldMapFrame:SetMapID(mapID)
-        if not WorldMapFrame:IsShown() then ShowUIPanel(WorldMapFrame) end
-    end
-    if x and y and C_Map.SetUserWaypoint and C_Map.CanSetUserWaypointOnMap and C_Map.CanSetUserWaypointOnMap(mapID) then
-        pcall(C_Map.SetUserWaypoint, { uiMapID = mapID, position = CreateVector2D(x, y) })
-        if C_SuperTrack and C_SuperTrack.SetSuperTrackedUserWaypoint then
-            C_SuperTrack.SetSuperTrackedUserWaypoint(true)
-        end
-    end
-end
-
-local function ShowGiver(step)
-    local giver = step.quest.g and step.quest.g[1]
-    local p = giver and giver.pos and giver.pos[1]
-    if not p then return end
-    local ok, mapID, x, y = pcall(ZoneFor, p[1], p[2], p[3])
-    if ok and mapID then OpenMapAt(mapID, x, y) end
-end
-
--- Forever entrances carry a map and percentages; vanilla ones a continent
--- and world position (DungeonPins resolves the former into the latter at
--- first draw, but the hub may open before the map ever did).
-local function ShowEntrance(node)
-    if node.map and node.mx then
-        OpenMapAt(node.map, node.mx / 100, node.my / 100)
-        return
-    end
-    if not node.x then return end
-    local ok, mapID, x, y = pcall(ZoneFor, node.continent, node.x, node.y)
-    if ok and mapID then OpenMapAt(mapID, x, y) end
+local function ToggleEntrance(d)
+    local node = d.nodes[1]
+    local mark = node and UlDC.EntranceMark(node)
+    if not mark then return end
+    if UlDC.ToggleMark("e" .. d.key, mark) then UlDC.ShowMark(mark) end
 end
 
 ------------------------------------------------------------------------
@@ -308,7 +269,8 @@ local function DungeonTooltip(self)
         GameTooltip:AddLine("Click to " .. (self.open and "hide" or "list") .. " the quests", 0.4, 0.8, 1)
     end
     if not d.pseudo then
-        GameTooltip:AddLine("Map opens the world map on the entrance", 0.4, 0.8, 1)
+        GameTooltip:AddLine(UlDC.IsMarked("e" .. d.key) and "Map removes the marker on the entrance"
+            or "Map marks the entrance and opens the world map", 0.4, 0.8, 1)
     end
     GameTooltip:Show()
 end
@@ -320,8 +282,13 @@ local function StepTooltip(self)
     local giver = step.quest.g and step.quest.g[1]
     GameTooltip:AddLine(giver and giver.n or (step.quest.gi and ("Inside " .. UlDC.DungeonName(step.quest.gi))) or "Unknown giver", 1, 0.82, 0)
     UlDC.AddStepLines(step, UnitLevel("player"))
-    if giver and giver.pos and giver.pos[1] then
-        GameTooltip:AddLine("Click to show on the map", 0.4, 0.8, 1)
+    local kind, where = UlDC.StepLocation(step)
+    if kind == "entrance" then
+        GameTooltip:AddLine("Starts inside " .. where, 0.8, 0.8, 0.8)
+    end
+    if kind then
+        GameTooltip:AddLine(UlDC.IsMarked("q" .. step.id) and "Click to remove the marker"
+            or ("Click to mark " .. (kind == "entrance" and "the entrance" or "the giver") .. " on the map"), 0.4, 0.8, 1)
     end
     GameTooltip:Show()
 end
@@ -359,7 +326,7 @@ local function CreateRow(parent)
     row.map:SetText("Map")
     row.map:SetScript("OnClick", function(self)
         local d = self:GetParent().dungeon
-        if d and d.nodes[1] then ShowEntrance(d.nodes[1]) end
+        if d then ToggleEntrance(d) end
     end)
 
     row.loot = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
@@ -393,7 +360,7 @@ local function CreateRow(parent)
         if self.item then
             LinkItem(self.item)
         elseif self.step then
-            ShowGiver(self.step)
+            ToggleStep(self.step)
         elseif self.dungeon and #self.dungeon.steps > 0 then
             expanded[self.dungeon.key] = not self.open
             UlDC.RefreshHub()
@@ -491,6 +458,7 @@ local function Fill()
             r.zone:SetPoint("RIGHT", r, "RIGHT", -(QUESTS_W + BUTTONS_W), 0)
             r.zone:SetText((d.zone or "") .. (d.kind == "raid" and " |cff999999(raid)|r" or ""))
             r.map:Show()
+            r.map:SetText(UlDC.IsMarked("e" .. d.key) and "|cffffd100Map|r" or "Map")
             r.loot:Show()
             r.loot:SetText(lootOpen[d.key] and "|cffffd100Loot|r" or "Loot")
         end
@@ -521,7 +489,8 @@ local function Fill()
         if step.hops > 0 then
             goalNote = string.format(" |cff999999(+%d step%s)|r", step.hops, step.hops == 1 and "" or "s")
         end
-        r.label:SetText(level .. " " .. UlDC.QuestTitle(step.id) .. goalNote)
+        local marked = UlDC.IsMarked("q" .. step.id) and (MARK .. " ") or ""
+        r.label:SetText(marked .. level .. " " .. UlDC.QuestTitle(step.id) .. goalNote)
         local state = step.inLog and "|cff66ccffin log|r" or (step.tooLow and ("|cffff6666needs " .. (q.m or 0) .. "|r") or "")
         local giver = q.g and q.g[1]
         r.right:SetPoint("RIGHT", r, "RIGHT", 0, 0)
@@ -636,6 +605,9 @@ local function Fill()
 
     local name = UnitName("player") or "You"
     window.who:SetText(string.format("%s, level %d", name, UnitLevel("player")))
+    local marks = UlDC.MarkCount and UlDC.MarkCount() or 0
+    window.clear:SetText(string.format("Clear %d mark%s", marks, marks == 1 and "" or "s"))
+    window.clear:SetShown(marks > 0)
     window.count:SetText(string.format("%d quest step%s", stepCount, stepCount == 1 and "" or "s"))
 end
 
@@ -674,6 +646,12 @@ local function CreateWindow()
     settings:SetText("Settings")
     settings:SetScript("OnClick", function() if UlDC.ToggleOptions then UlDC.ToggleOptions() end end)
 
+    f.clear = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+    f.clear:SetSize(110, 20)
+    f.clear:SetPoint("RIGHT", settings, "LEFT", -6, 0)
+    f.clear:SetScript("OnClick", function() if UlDC.ClearMarks then UlDC.ClearMarks() end end)
+    f.clear:Hide()
+
     local scroll = CreateFrame("ScrollFrame", "UlDCHubScroll", f, "UIPanelScrollFrameTemplate")
     scroll:SetPoint("TOPLEFT", f, "TOPLEFT", 8, -54)
     scroll:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -30, 30)
@@ -684,7 +662,7 @@ local function CreateWindow()
 
     local hint = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     hint:SetPoint("BOTTOM", f, "BOTTOM", 0, 10)
-    hint:SetText("Click a dungeon for its quests, a quest for the giver on the map. Hover a row for details.")
+    hint:SetText("Click a dungeon for its quests, a quest to mark its giver on the map. Hover a row for details.")
 
     f:SetScript("OnShow", Fill)
     f:Hide()

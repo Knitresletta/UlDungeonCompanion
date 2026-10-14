@@ -1,0 +1,21 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+	<Frame name="UlDCMarkPinTemplate" enableMouseMotion="true" enableMouseClicks="true" mixin="UlDCMarkPinMixin" virtual="true">
+		<Size x="28" y="28"/>
+		<Layers>
+			<Layer level="ARTWORK">
+				<Texture parentKey="Texture" atlas="Waypoint-MapPin-Untracked" useAtlasSize="true">
+					<Anchors>
+						<Anchor point="CENTER"/>
+					</Anchors>
+				</Texture>
+			</Layer>
+			<Layer level="HIGHLIGHT">
+				<Texture parentKey="Highlight" atlas="Waypoint-MapPin-Untracked" useAtlasSize="true" alphaMode="ADD" alpha="0.4">
+					<Anchors>
+						<Anchor point="CENTER"/>
+					</Anchors>
+				</Texture>
+			</Layer>
+		</Layers>
+	</Frame>
+</Ui>
