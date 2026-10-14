@@ -1616,6 +1616,7 @@ UlDC.LOOT = {
     } },
     { n="Grubbis", l=32, items={
       {9445,"Grubbis Paws",3,10,4,3,10,-1},
+      {7422,"Phalanx Girdle",2,3,4,3,6,-1},
     } },
     { n="Dark Iron Ambassador", l=33, items={
       {9455,"Emissary Cuffs",3,33,4,2,9,-1},
@@ -3143,10 +3144,21 @@ UlDC.LOOT = {
     } },
   },
   ["stockade"] = {
+    { n="Targorr the Dread", l=24, items={
+    } },
     { n="Bruegal Ironknuckle", l=26, items={
       {2942,"Iron Knuckles",3,33,2,13,13,-1},
       {3228,"Jimmied Handcuffs",3,33,4,3,9,-1},
       {2941,"Prison Shank",3,33,2,15,13,-1},
+    } },
+    { n="Dextren Ward", l=26, items={
+    } },
+    { n="Kam Deepfury", l=27, items={
+      {2280,"Kam's Walking Stick",2,1,2,10,17,-1},
+    } },
+    { n="Hamhock", l=28, items={
+    } },
+    { n="Bazil Thredd", l=29, items={
     } },
   },
   ["strat"] = {
@@ -3320,6 +3332,37 @@ UlDC.LOOT = {
       {13374,"Soulstealer Mantle",3,14,4,1,3,-1},
       {12843,"Corruptor's Scourgestone",2,100,12,0,0,-1},
       {12735,"Frayed Abomination Stitching",2,100,12,0,0,-1},
+      {10256,"Adventurer's Bracers",2,1,4,2,9,-1},
+      {10258,"Adventurer's Cape",2,1,4,1,16,-1},
+      {8283,"Arcane Armor",2,1,4,1,5,-1},
+      {8289,"Arcane Leggings",2,1,4,1,7,-1},
+      {8290,"Arcane Robe",2,1,4,1,20,-1},
+      {15931,"Arcane Star",2,1,4,0,23,-1},
+      {15987,"Astral Orb",2,1,4,0,23,-1},
+      {15288,"Blasthorn Bow",2,1,2,2,15,-1},
+      {14303,"Bonecaster's Shroud",2,1,4,1,20,-1},
+      {15986,"Bonecaster's Star",2,1,4,0,23,-1},
+      {14306,"Bonecaster's Vest",2,1,4,1,5,-1},
+      {14312,"Celestial Crown",2,1,4,1,1,-1},
+      {14317,"Celestial Silk Robes",2,1,4,1,20,-1},
+      {14308,"Celestial Tunic",2,1,4,1,5,-1},
+      {10376,"Commander's Boots",2,1,4,4,8,-1},
+      {10380,"Commander's Gauntlets",2,1,4,4,10,-1},
+      {10379,"Commander's Helm",2,1,4,4,1,-1},
+      {10383,"Commander's Pauldrons",2,1,4,4,3,-1},
+      {15282,"Dragon Finger",2,1,2,19,26,-1},
+      {12057,"Dragonscale Band",2,1,4,0,11,-1},
+      {10219,"Elegant Circlet",2,1,4,1,1,-1},
+      {10217,"Elegant Leggings",2,1,4,1,7,-1},
+      {10210,"Elegant Mantle",2,1,4,1,3,-1},
+      {14465,"Elunarian Belt",2,1,4,1,6,-1},
+      {14458,"Elunarian Boots",2,1,4,1,8,-1},
+      {10275,"Emerald Breastplate",2,1,4,4,5,-1},
+      {10230,"Engraved Breastplate",2,1,4,3,5,-1},
+      {10363,"Engraved Wall",2,1,4,6,14,-1},
+      {14330,"Eternal Bindings",2,1,4,1,9,-1},
+      {14337,"Eternal Cord",2,1,4,1,6,-1},
+      {14976,"Exalted Gauntlets",2,1,4,4,10,-1},
     } },
     { n="Venom Belcher", l=61, items={
       {16736,"Belt of Valor",3,2,4,4,6,-1},
@@ -3472,6 +3515,7 @@ UlDC.LOOT = {
       {6463,"Deep Fathom Ring",3,33,4,0,11,-1},
       {6627,"Mutant Scale Breastplate",3,33,4,3,5,-1},
       {6461,"Slime-encrusted Pads",3,33,4,1,3,-1},
+      {9812,"Fortified Cloak",2,2,4,1,16,-1},
     } },
   },
   ["zf"] = {
@@ -3491,6 +3535,7 @@ UlDC.LOOT = {
       {9475,"Diabolic Skiver",3,25,2,6,17,-1},
       {9474,"Jinxed Hoodoo Kilt",3,25,4,2,7,-1},
       {9473,"Jinxed Hoodoo Skin",3,25,4,2,5,-1},
+      {9243,"Shriveled Heart",2,2,4,0,2,-1},
     } },
     { n="Antu'sul", l=48, items={
       {9641,"Lifeblood Amulet",3,25,4,0,2,-1},

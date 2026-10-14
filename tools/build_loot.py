@@ -11,7 +11,8 @@ trash mobs with their fractions of a percent for random world drops.
 Bosses the instance scripts spawn (Grubbis, Sneed, Mutanus, Kirtonos,
 the Blackrock Depths arena) have no spawn row, so BOSSES lists them by
 hand, and lists the few spawned bosses whose drops fall under the source
-threshold (Rhahk'Zor). Once a creature is a source, its rare-or-better
+threshold (Rhahk'Zor, the Stockade's quest bosses); a listed boss keeps
+its greens from 1 % and is written even when nothing is left. Once a creature is a source, its rare-or-better
 items from 1 % and uncommon items from 3 % are kept. Quest drops
 (negative chance) are not loot. Chests (gameobject type 3) spawned in
 the instance go through the same sieve, with level 0.
@@ -43,6 +44,7 @@ MAP_KEY = {
 
 SOURCE_MIN = {2: 10.0, 3: 3.0, 4: 3.0, 5: 3.0}   # quality -> chance that makes a creature a source
 KEEP_MIN = {2: 3.0, 3: 1.0, 4: 1.0, 5: 1.0}       # quality -> lowest chance kept for a source
+KEEP_MIN_BOSS = {2: 1.0, 3: 1.0, 4: 1.0, 5: 1.0}  # same for a creature in BOSSES: its named greens count
 MAX_ITEMS_PER_SOURCE = 40
 
 # Creatures that belong to an instance without a spawn row there (spawned
@@ -50,6 +52,9 @@ MAX_ITEMS_PER_SOURCE = 40
 # source threshold. creature_template entries.
 BOSSES = {
     "deadmines": [643, 644],                 # Sneed, Rhahk'Zor
+    "stockade": [1696, 1666, 1717, 1716, 1663],
+                                             # Targorr, Kam Deepfury, Hamhock, Bazil Thredd, Dextren Ward: quest bosses
+                                             # with world drops only in 1.12, listed so the instance is not empty
     "wc": [3654],                            # Mutanus the Devourer
     "gnomeregan": [7361],                    # Grubbis
     "rfd": [7355, 7356],                     # Tuten'kash, Plaguemaw the Rotting
@@ -180,7 +185,9 @@ def main():
                     continue        # mining nodes are chests too
                 ct = {"name": ct["name"], "level_max": 0}
                 drops = resolve(gameobject_loot.get(chests[cid]["data1"], []), refs)
-            is_source = kind == "c" and cid in BOSSES.get(key, ())
+            forced = kind == "c" and cid in BOSSES.get(key, ())
+            is_source = forced
+            keep_min = KEEP_MIN_BOSS if forced else KEEP_MIN
             kept = []
             for item_id, chance in drops.items():
                 it = items.get(item_id)
@@ -191,9 +198,10 @@ def main():
                 # green are not worth a line.
                 if q in SOURCE_MIN and chance >= SOURCE_MIN[q] and (kind == "c" or q >= 3):
                     is_source = True
-                if q in KEEP_MIN and chance >= KEEP_MIN[q]:
+                if q in keep_min and chance >= keep_min[q]:
                     kept.append((item_id, it, chance))
-            if not is_source or not kept:
+            # A listed boss stays in the list even with nothing to show.
+            if not is_source or (not kept and not forced):
                 continue
             kept.sort(key=lambda t: (-t[1]["quality"], -t[2], t[1]["name"]))
             sources.append({

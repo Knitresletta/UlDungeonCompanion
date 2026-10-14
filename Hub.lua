@@ -540,6 +540,14 @@ local function Fill()
             h.label:SetFontObject("GameFontHighlightSmall")
             local level = source.l and source.l > 0 and (" |cff999999(level " .. source.l .. ")|r") or " |cff999999(chest)|r"
             h.label:SetText("|cffffd100" .. source.n .. "|r" .. level)
+            if #source.items == 0 then
+                local r = row(STEP_H, INDENT * 2)
+                r.highlight:Hide()
+                r:EnableMouse(false)
+                r.label:SetFontObject("GameFontHighlightSmall")
+                r.label:SetTextColor(0.5, 0.5, 0.5)
+                r.label:SetText("No notable drops, world drops only.")
+            end
             for _, item in ipairs(source.items) do
                 local r = row(STEP_H, INDENT * 2)
                 r.item, r.source = item, source.n
