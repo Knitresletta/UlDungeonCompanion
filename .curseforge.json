@@ -11,6 +11,7 @@
     ".pkgmeta",
     ".gitattributes",
     ".gitignore",
-    "tools/*"
+    "tools/*",
+    "AGENTS.md"
   ]
 }
