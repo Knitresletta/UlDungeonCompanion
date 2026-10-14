@@ -46,6 +46,9 @@ local GROUPS = {
         "C_Map.GetBestMapForUnit", "C_Map.GetMapInfo", "C_Map.GetPlayerMapPosition", "C_Map.GetMapPosFromWorldPos",
         "C_Map.GetWorldPosFromMapPos", "C_Map.SetUserWaypoint", "C_Map.CanSetUserWaypointOnMap",
         "C_Map.GetMapChildrenInfo", "C_Map.GetMapArtID", "C_SuperTrack.SetSuperTrackedUserWaypoint",
+        "C_Map.GetMapLevels", "C_Map.GetMapInfoAtPosition", "WorldMapFrame.GetNormalizedCursorPosition",
+        "WorldMapFrame.GetCanvasContainer", "AreaLabelFrameMixin", "AreaLabelDataProviderMixin",
+        "MAP_AREA_LABEL_TYPE", "MAP_AREA_LEVEL_RANGE",
         "C_SuperTrack.SetSuperTrackedQuestID", "C_AreaPoiInfo.GetAreaPOIForMap", "UnitPosition",
         "WorldMapFrame.AddDataProvider", "WorldMapFrame.EnumeratePinsByTemplate", "MapCanvasDataProviderMixin",
         "MapCanvasPinMixin", "DungeonEntrancePinMixin", "FlightPointPinMixin", "QuestPinMixin",
@@ -211,6 +214,47 @@ local function ProbeCompleted()
     end
 end
 
+-- Zone maps and what the client says about their levels, and the area
+-- label frame the zone level line is hooked into (ZoneLabels.lua).
+local function ProbeZones()
+    local maps = UlDC.ZoneMaps and UlDC.ZoneMaps()
+    if type(maps) == "table" then
+        Record("zones", "count", #maps)
+        for _, m in ipairs(maps) do
+            local levels = "no GetMapLevels"
+            if C_Map.GetMapLevels then levels = "GetMapLevels " .. Try(C_Map.GetMapLevels, m.mapID) end
+            Record("zones", m.name, string.format("%d, %s, %s", m.mapID, levels,
+                m.zone and ("data " .. m.zone.levels[1] .. "-" .. m.zone.levels[2]) or "no data"))
+        end
+    else
+        Record("zones", "count", "none (" .. tostring(maps) .. ")")
+    end
+    local label = UlDC.FindAreaLabel and UlDC.FindAreaLabel()
+    if label then
+        local keys = {}
+        for k, v in pairs(label) do
+            if type(k) == "string" then keys[#keys + 1] = k .. ":" .. type(v) end
+        end
+        table.sort(keys)
+        Record("areaLabel", "found", "yes: " .. table.concat(keys, " "))
+        Record("areaLabel", "nameText", Try(function() return label.Name:GetText() end))
+        Record("areaLabel", "descriptionText", Try(function() return label.Description:GetText() end))
+    else
+        local names = {}
+        if WorldMapFrame and type(WorldMapFrame.dataProviders) == "table" then
+            for provider in pairs(WorldMapFrame.dataProviders) do
+                local fields = {}
+                for k, v in pairs(provider) do
+                    if type(k) == "string" and type(v) == "table" then fields[#fields + 1] = k end
+                end
+                table.sort(fields)
+                names[#names + 1] = "{" .. table.concat(fields, ",") .. "}"
+            end
+        end
+        Record("areaLabel", "found", "no; providers: " .. #names .. " " .. table.concat(names, " "))
+    end
+end
+
 local function ProbeMap()
     local mapID = C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player")
     if not mapID then return end
@@ -248,6 +292,7 @@ local function ProbeMap()
         "UI-QuestPoi-OuterGlow", "TaxiNode_Neutral", "poi-door", "Waypoint-MapPin-Untracked" }) do
         Record("atlas", atlas, AtlasExists(atlas))
     end
+    ProbeZones()
     if EJ_GetNumTiers then
         Record("journal", "tiers", Try(EJ_GetNumTiers))
     end

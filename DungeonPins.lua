@@ -139,6 +139,11 @@ local function AddLevelLines(node)
             GameTooltip:AddDoubleLine("  " .. wing.name, LevelText(wing.levels), 0.7, 0.7, 0.7, wr, wg, wb)
         end
     end
+    local zone = UlDC.enabled.zonelevels and node.zone and UlDC.ZONES and UlDC.ZONES[node.zone]
+    if zone then
+        local _, fit, r, g, b = UlDC.ZoneLevelText(zone)
+        GameTooltip:AddDoubleLine(node.zone .. ", level " .. LevelText(zone.levels), fit, 0.8, 0.8, 0.8, r, g, b)
+    end
     if node.entry and UnitLevel("player") < node.entry then
         GameTooltip:AddLine("Requires level " .. node.entry .. " to enter", 1, 0.3, 0.3)
     end
