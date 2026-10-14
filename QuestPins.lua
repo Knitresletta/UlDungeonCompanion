@@ -77,11 +77,11 @@ end
 
 -- Marker look: the quest marker is drawn desaturated and tinted, since a
 -- vertex color only darkens the yellow atlas. Pastel pink for steps that
--- lead into an instance, pastel lavender for elite-only steps. SCALE
+-- lead into an instance, pastel light blue for elite-only steps. SCALE
 -- shrinks the marker from the atlas size (Jonatan's call, 14.10.2026).
 local SCALE = 0.8
 local COLOR_DUNGEON = { 1.00, 0.76, 0.86 }
-local COLOR_ELITE = { 0.80, 0.72, 0.96 }
+local COLOR_ELITE = { 0.70, 0.86, 1.00 }
 
 local function SizeToAtlas(texture, atlas, scale)
     local info = C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(atlas)
