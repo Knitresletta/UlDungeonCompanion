@@ -15,21 +15,27 @@
 -- level in the game's difficulty color, title, giver or state. Hovering
 -- a step shows the chain, clicking it opens the world map on the giver
 -- with a waypoint. The Map button on a dungeon row does the same for the
--- entrance. Settings (the feature switches) live behind the button in
--- the top right, see Options.lua.
+-- entrance. The Loot button folds out the notable drops inside
+-- (UlDC.LOOT, see tools/build_loot.py): one line per creature, its items
+-- in quality colors with slot and drop chance, dimmed when the character
+-- cannot use them. Hovering an item shows the game's item tooltip,
+-- clicking it puts the link in an open chat box. Settings (the feature
+-- switches) live behind the button in the top right, see Options.lua.
 
 local WIDTH, HEIGHT = 660, 580
 local ROW_H, STEP_H, HEADER_H = 20, 18, 24
 local LEFT = 10
 local INDENT = 22
-local STATE_W = 150       -- right column of a step row (giver or state)
+local STATE_W = 150       -- right column of a step or item row
 local QUESTS_W = 140      -- quest count column of a dungeon row
-local MAP_W = 48
+local MAP_W, LOOT_W = 48, 48
+local BUTTONS_W = MAP_W + LOOT_W + 12
 
 local window
 local rows = {}
 local expanded = {}       -- dungeon key -> true/false once the player has clicked
 local unfolded = {}       -- section key -> true when a folded section is open
+local lootOpen = {}       -- dungeon key -> true while its loot is folded out
 
 -- Continent instance ID -> the continent's uiMapID, used to find the zone
 -- under a world position. Retail IDs, verified on Forever (Stormwind's
@@ -175,6 +181,92 @@ local function IsExpanded(d, section)
 end
 
 ------------------------------------------------------------------------
+-- Items
+------------------------------------------------------------------------
+
+-- LootData item fields: { id, name, quality, chance, class, subclass, inventoryType, allowableClass }.
+local QUALITY_COLOR = { [0] = "|cff9d9d9d", "|cffffffff", "|cff1eff00", "|cff0070dd", "|cffa335ee", "|cffff8000" }
+
+local CLASS_BIT = { WARRIOR = 1, PALADIN = 2, HUNTER = 4, ROGUE = 8, PRIEST = 16, SHAMAN = 64, MAGE = 128, WARLOCK = 256, DRUID = 1024 }
+
+local SLOT = {
+    [1] = "Head", [2] = "Neck", [3] = "Shoulder", [4] = "Shirt", [5] = "Chest", [6] = "Waist", [7] = "Legs",
+    [8] = "Feet", [9] = "Wrist", [10] = "Hands", [11] = "Finger", [12] = "Trinket", [13] = "One-hand",
+    [14] = "Shield", [15] = "Ranged", [16] = "Back", [17] = "Two-hand", [18] = "Bag", [19] = "Tabard",
+    [20] = "Chest", [21] = "Main hand", [22] = "Off hand", [23] = "Held", [24] = "Ammo", [25] = "Thrown",
+    [26] = "Ranged", [28] = "Relic",
+}
+local ARMOR = { [1] = "Cloth", [2] = "Leather", [3] = "Mail", [4] = "Plate", [6] = "Shield", [7] = "Libram", [8] = "Idol", [9] = "Totem" }
+local WEAPON = {
+    [0] = "Axe", [1] = "Two-hand axe", [2] = "Bow", [3] = "Gun", [4] = "Mace", [5] = "Two-hand mace",
+    [6] = "Polearm", [7] = "Sword", [8] = "Two-hand sword", [10] = "Staff", [13] = "Fist weapon",
+    [15] = "Dagger", [16] = "Thrown", [17] = "Spear", [18] = "Crossbow", [19] = "Wand", [20] = "Fishing pole",
+}
+-- Armor types a class can wear (subclass -> level it opens at), shields
+-- included as subclass 6.
+local WEARS = {
+    WARRIOR = { [1] = 1, [2] = 1, [3] = 1, [4] = 40, [6] = 1 }, PALADIN = { [1] = 1, [2] = 1, [3] = 1, [4] = 40, [6] = 1 },
+    HUNTER = { [1] = 1, [2] = 1, [3] = 40 }, SHAMAN = { [1] = 1, [2] = 1, [3] = 40, [6] = 1 },
+    ROGUE = { [1] = 1, [2] = 1 }, DRUID = { [1] = 1, [2] = 1 },
+    PRIEST = { [1] = 1 }, MAGE = { [1] = 1 }, WARLOCK = { [1] = 1 },
+}
+
+local function SlotText(item)
+    local class, sub, inv = item[5], item[6], item[7]
+    if class == 4 then
+        local kind = ARMOR[sub]
+        local slot = SLOT[inv]
+        if kind and slot and sub >= 1 and sub <= 4 then return kind .. " " .. slot:lower() end
+        return kind or slot or ""
+    elseif class == 2 then
+        return WEAPON[sub] or SLOT[inv] or "Weapon"
+    elseif class == 9 then
+        return "Recipe"
+    end
+    return SLOT[inv] or ""
+end
+
+-- Whether the character can use the item, as far as class and armor type
+-- tell. Weapon skills are not checked.
+local function Usable(item)
+    local _, class = UnitClass("player")
+    local mask = item[8]
+    if mask and mask > 0 and mask ~= 32767 and CLASS_BIT[class] and bit.band(mask, CLASS_BIT[class]) == 0 then
+        return false
+    end
+    if item[5] == 4 and (item[6] >= 1 and item[6] <= 4 or item[6] == 6) then
+        local wears = WEARS[class]
+        local from = wears and wears[item[6]]
+        if not from or UnitLevel("player") < from then return false end
+    end
+    return true
+end
+
+local function ItemTooltip(self)
+    local item = self.item
+    if not item then return end
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    local shown = false
+    if GameTooltip.SetItemByID then
+        shown = pcall(GameTooltip.SetItemByID, GameTooltip, item[1])
+    end
+    if not shown then
+        GameTooltip:AddLine((QUALITY_COLOR[item[3]] or "") .. item[2] .. "|r")
+        GameTooltip:AddLine(SlotText(item), 0.8, 0.8, 0.8)
+    end
+    GameTooltip:AddLine(string.format("Drops from %s, about %d%%", self.source or "?", item[4]), 0.6, 0.8, 1)
+    if not Usable(item) then GameTooltip:AddLine("Not for your class", 1, 0.4, 0.4) end
+    GameTooltip:Show()
+end
+
+local function LinkItem(item)
+    local getInfo = (C_Item and C_Item.GetItemInfo) or GetItemInfo
+    if not getInfo then return end
+    local _, link = getInfo(item[1])
+    if link and ChatEdit_InsertLink then ChatEdit_InsertLink(link) end
+end
+
+------------------------------------------------------------------------
 -- Tooltips
 ------------------------------------------------------------------------
 
@@ -261,6 +353,17 @@ local function CreateRow(parent)
         if d and d.nodes[1] then ShowEntrance(d.nodes[1]) end
     end)
 
+    row.loot = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+    row.loot:SetSize(LOOT_W, 18)
+    row.loot:SetPoint("RIGHT", row.map, "LEFT", -4, 0)
+    row.loot:SetText("Loot")
+    row.loot:SetScript("OnClick", function(self)
+        local d = self:GetParent().dungeon
+        if not d then return end
+        lootOpen[d.key] = not lootOpen[d.key]
+        UlDC.RefreshHub()
+    end)
+
     row.line = row:CreateTexture(nil, "ARTWORK")
     row.line:SetColorTexture(1, 0.82, 0, 0.25)
     row.line:SetHeight(1)
@@ -272,11 +375,15 @@ local function CreateRow(parent)
     row.highlight:SetColorTexture(1, 1, 1, 0.08)
 
     row:SetScript("OnEnter", function(self)
-        if self.step then StepTooltip(self) elseif self.dungeon then DungeonTooltip(self) end
+        if self.item then ItemTooltip(self)
+        elseif self.step then StepTooltip(self)
+        elseif self.dungeon then DungeonTooltip(self) end
     end)
     row:SetScript("OnLeave", function() GameTooltip:Hide() end)
     row:SetScript("OnClick", function(self)
-        if self.step then
+        if self.item then
+            LinkItem(self.item)
+        elseif self.step then
             ShowGiver(self.step)
         elseif self.dungeon and #self.dungeon.steps > 0 then
             expanded[self.dungeon.key] = not self.open
@@ -292,6 +399,8 @@ end
 -- Everything hidden and detached; the role fills in what it needs.
 local function Reset(row)
     row.step, row.dungeon, row.section, row.open = nil, nil, nil, nil
+    row.item, row.source = nil, nil
+    row.loot:Hide()
     row.label:ClearAllPoints()
     row.label:SetPoint("LEFT", row, "LEFT", 0, 0)
     row.label:SetPoint("RIGHT", row, "RIGHT", 0, 0)
@@ -362,7 +471,7 @@ local function Fill()
         if #d.steps > 0 then marker = (r.open and "- " or "+ ") else marker = "  " end
         r.label:SetText(marker .. d.name)
         if d.pseudo then
-            r.label:SetPoint("RIGHT", r, "RIGHT", -(QUESTS_W + MAP_W + 8), 0)
+            r.label:SetPoint("RIGHT", r, "RIGHT", -(QUESTS_W + BUTTONS_W), 0)
         else
             r.label:SetPoint("RIGHT", r, "LEFT", 240, 0)
             local _, cr, cg, cb = UlDC.LevelFit(d.levels)
@@ -370,11 +479,13 @@ local function Fill()
             r.range:SetWidth(50)
             r.range:SetText(Color(cr, cg, cb) .. RangeText(d.levels) .. "|r")
             r.zone:SetPoint("LEFT", r, "LEFT", 298, 0)
-            r.zone:SetPoint("RIGHT", r, "RIGHT", -(QUESTS_W + MAP_W + 8), 0)
+            r.zone:SetPoint("RIGHT", r, "RIGHT", -(QUESTS_W + BUTTONS_W), 0)
             r.zone:SetText((d.zone or "") .. (d.kind == "raid" and " |cff999999(raid)|r" or ""))
             r.map:Show()
+            r.loot:Show()
+            r.loot:SetText(lootOpen[d.key] and "|cffffd100Loot|r" or "Loot")
         end
-        r.right:SetPoint("RIGHT", r, "RIGHT", -(MAP_W + 8), 0)
+        r.right:SetPoint("RIGHT", r, "RIGHT", -BUTTONS_W, 0)
         r.right:SetWidth(QUESTS_W)
         local n = #d.steps
         local quests
@@ -407,6 +518,41 @@ local function Fill()
         r.right:SetPoint("RIGHT", r, "RIGHT", 0, 0)
         r.right:SetWidth(STATE_W - 2)
         r.right:SetText(state ~= "" and state or (giver and giver.n or (q.gi and "inside") or ""))
+    end
+
+    -- The notable drops inside one instance: a line per creature, its
+    -- items underneath.
+    local function lootRows(d)
+        local sources = UlDC.LOOT and UlDC.LOOT[d.key]
+        if not sources or #sources == 0 then
+            local r = row(STEP_H, INDENT)
+            r.highlight:Hide()
+            r:EnableMouse(false)
+            r.label:SetFontObject("GameFontHighlightSmall")
+            r.label:SetTextColor(0.6, 0.6, 0.6)
+            r.label:SetText("No loot data for this instance yet.")
+            return
+        end
+        for _, source in ipairs(sources) do
+            local h = row(STEP_H, INDENT)
+            h.highlight:Hide()
+            h:EnableMouse(false)
+            h.label:SetFontObject("GameFontHighlightSmall")
+            h.label:SetText("|cffffd100" .. source.n .. "|r |cff999999(level " .. source.l .. ")|r")
+            for _, item in ipairs(source.items) do
+                local r = row(STEP_H, INDENT * 2)
+                r.item, r.source = item, source.n
+                r.label:SetFontObject("GameFontHighlightSmall")
+                r.label:SetPoint("RIGHT", r, "RIGHT", -STATE_W, 0)
+                local usable = Usable(item)
+                local name = (QUALITY_COLOR[item[3]] or "") .. item[2] .. "|r"
+                if not usable then name = "|cff777777" .. item[2] .. "|r" end
+                r.label:SetText(name)
+                r.right:SetPoint("RIGHT", r, "RIGHT", 0, 0)
+                r.right:SetWidth(STATE_W - 2)
+                r.right:SetText(string.format("%s%s  %d%%|r", usable and "|cffb0b0b0" or "|cff777777", SlotText(item), item[4]))
+            end
+        end
     end
 
     local function namesRow(members)
@@ -447,10 +593,14 @@ local function Fill()
                 namesRow(members)
             else
                 for _, d in ipairs(members) do
-                    if dungeonRow(d, section) then
+                    local open = dungeonRow(d, section)
+                    if open then
                         for _, step in ipairs(d.steps) do stepRow(step) end
-                        y = y - 2
                     end
+                    if lootOpen[d.key] and not d.pseudo then
+                        lootRows(d)
+                    end
+                    if open or lootOpen[d.key] then y = y - 2 end
                 end
             end
             y = y - 8
