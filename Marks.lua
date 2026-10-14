@@ -166,12 +166,20 @@ end
 UlDCMarkPinMixin = CreateFromMixins(MapCanvasPinMixin)
 
 -- The map canvas lets right-clicks fall through pins so a right-click
--- zooms the map out; this pin wants them itself. Cleared on load and
--- again on every acquire, since the canvas sets the pass-through after
--- creating a pin.
+-- zooms the map out (seen on Forever 15.10.2026: the map zoomed out
+-- instead of removing the marker). The canvas asks each new pin which
+-- buttons to pass through (ShouldMouseButtonBePassthrough); this pin
+-- answers none, and clears the pass-through itself as well, right away
+-- and once the canvas is done with the acquire.
 local function KeepRightClicks(pin)
     if pin.SetPassThroughButtons then pcall(pin.SetPassThroughButtons, pin) end
 end
+
+function UlDCMarkPinMixin_ShouldMouseButtonBePassthrough()
+    return false
+end
+
+UlDCMarkPinMixin.ShouldMouseButtonBePassthrough = UlDCMarkPinMixin_ShouldMouseButtonBePassthrough
 
 function UlDCMarkPinMixin:OnLoad()
     self:SetScalingLimits(1, 1.0, 1.2)
@@ -187,6 +195,7 @@ end
 function UlDCMarkPinMixin:OnAcquired(entry)
     self.entry = entry
     KeepRightClicks(self)
+    if C_Timer and C_Timer.After then C_Timer.After(0, function() KeepRightClicks(self) end) end
     local ok, err = pcall(function()
         if C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(ATLAS) then
             self.Texture:SetAtlas(ATLAS, true)
@@ -279,6 +288,19 @@ function UlDC.PrintMarks()
     for key, mark in pairs(Marks()) do
         print("  " .. tostring(mark.label) .. (mark.note and (" (" .. mark.note .. ")") or "") .. "  [" .. key .. "]")
     end
+    -- Which buttons the pins on the open map pass through to the canvas.
+    if WorldMapFrame and WorldMapFrame:IsShown() and WorldMapFrame.EnumeratePinsByTemplate then
+        for pin in WorldMapFrame:EnumeratePinsByTemplate(PIN_TEMPLATE) do
+            local passed = "?"
+            if pin.GetPassThroughButtons then
+                local ok, a, b = pcall(pin.GetPassThroughButtons, pin)
+                passed = ok and (tostring(a) .. (b and ("," .. tostring(b)) or "")) or ("error " .. tostring(a))
+            end
+            print(string.format("  pin %s: passes through %s, mouse clicks %s", tostring(pin.entry and pin.entry.label),
+                passed, tostring(pin.IsMouseClickEnabled and pin:IsMouseClickEnabled())))
+        end
+    end
+    print("  last error: " .. tostring(lastError))
 end
 
 local frame = CreateFrame("Frame")
