@@ -20,6 +20,8 @@ The quest data is generated from the vanilla 1.12 database by `tools/build_quest
 
 Quests that are new in Forever (the new dungeons' quests and the reworked chains, such as Alba Fairmoon's road to the Deadmines) come from [ForeverChanges](https://foreverchanges.pro), which reads the beta client and Wowhead's Forever database, via `tools/fetch_forever.py` (78 quests, givers with map positions). The beta only has content up to its current level cap, so the data grows with the beta; vanilla quests Forever kept are covered by the vanilla data.
 
+**Minimap menu**: No minimap button of its own. When [UlRemedyForever](https://github.com/Knitresletta/UlRemedyForever) is installed, its minimap button's right-click menu gets a "Dungeon Companion" row that opens the hub. UlDungeonCompanion registers itself there at login and works unchanged without it. One optional dependency in the TOC, one global read, nothing else shared.
+
 ## Planned
 
 **Learning in play.** Quest givers and instance entrances the shipped data does not know are remembered when you meet them, as a safety net for content no database has yet.

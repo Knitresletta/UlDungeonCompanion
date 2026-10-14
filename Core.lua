@@ -141,6 +141,16 @@ frame:SetScript("OnEvent", function(self, event, arg1)
         self:UnregisterEvent("ADDON_LOADED")
     elseif event == "PLAYER_LOGIN" then
         UlDC.Print(UlDC.Version() .. " loaded. Type |cffffcc00/udc|r for the hub.")
+        -- A row in UlRemedyForever's minimap button menu, when that addon
+        -- is installed. It owns the button; this addon has none of its own.
+        if UlRemedy and type(UlRemedy.Register) == "function" then
+            UlRemedy.Register({
+                id = UlDC.name,
+                title = "Dungeon Companion",
+                icon = "Interface\\AddOns\\UlDungeonCompanion\\media\\icon",
+                open = function() if UlDC.ToggleHub then UlDC.ToggleHub() end end,
+            })
+        end
         self:UnregisterEvent("PLAYER_LOGIN")
     end
 end)
