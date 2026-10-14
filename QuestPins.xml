@@ -1,9 +1,9 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
 	<Frame name="UlDCQuestPinTemplate" enableMouseMotion="true" enableMouseClicks="true" mixin="UlDCQuestPinMixin" virtual="true">
-		<Size x="26" y="26"/>
+		<Size x="21" y="21"/>
 		<Layers>
 			<Layer level="ARTWORK">
-				<Texture parentKey="Texture" atlas="QuestNormal" useAtlasSize="true">
+				<Texture parentKey="Texture" atlas="QuestNormal" useAtlasSize="false">
 					<Anchors>
 						<Anchor point="CENTER"/>
 					</Anchors>
@@ -11,14 +11,14 @@
 			</Layer>
 			<Layer level="OVERLAY">
 				<Texture parentKey="Badge" atlas="Dungeon" useAtlasSize="false">
-					<Size x="14" y="14"/>
+					<Size x="11" y="11"/>
 					<Anchors>
 						<Anchor point="BOTTOMRIGHT" x="5" y="-4"/>
 					</Anchors>
 				</Texture>
 			</Layer>
 			<Layer level="HIGHLIGHT">
-				<Texture parentKey="Highlight" atlas="QuestNormal" useAtlasSize="true" alphaMode="ADD" alpha="0.4">
+				<Texture parentKey="Highlight" atlas="QuestNormal" useAtlasSize="false" alphaMode="ADD" alpha="0.4">
 					<Anchors>
 						<Anchor point="CENTER"/>
 					</Anchors>

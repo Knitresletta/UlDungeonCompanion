@@ -75,9 +75,31 @@ local function EntryFlags(entry)
     return flags
 end
 
+-- Marker look: the quest marker is drawn desaturated and tinted, since a
+-- vertex color only darkens the yellow atlas. Pastel pink for steps that
+-- lead into an instance, pastel lavender for elite-only steps. SCALE
+-- shrinks the marker from the atlas size (Jonatan's call, 14.10.2026).
+local SCALE = 0.8
+local COLOR_DUNGEON = { 1.00, 0.76, 0.86 }
+local COLOR_ELITE = { 0.80, 0.72, 0.96 }
+
+local function SizeToAtlas(texture, atlas, scale)
+    local info = C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(atlas)
+    if info and info.width and info.height then
+        texture:SetSize(info.width * scale, info.height * scale)
+    end
+end
+
 function UlDCQuestPinMixin:OnAcquired(entry)
     self.entry = entry
     local ok, err = pcall(function()
+        if not self.sized then
+            SizeToAtlas(self.Texture, "QuestNormal", SCALE)
+            SizeToAtlas(self.Highlight, "QuestNormal", SCALE)
+            self.Badge:SetSize(14 * SCALE, 14 * SCALE)
+            self.Badge:SetPoint("BOTTOMRIGHT", 5 * SCALE, -4 * SCALE)
+            self.sized = true
+        end
         local flags = EntryFlags(entry)
         local badge = bit.band(flags, UlDC.FLAG_RAID) ~= 0 and "Raid" or
                       bit.band(flags, UlDC.FLAG_DUNGEON) ~= 0 and "Dungeon" or nil
@@ -87,12 +109,11 @@ function UlDCQuestPinMixin:OnAcquired(entry)
         else
             self.Badge:Hide()
         end
-        -- Elite-only steps get the marker tinted so they stand apart.
-        if not badge then
-            self.Texture:SetVertexColor(1, 0.7, 0.7)
-        else
-            self.Texture:SetVertexColor(1, 1, 1)
-        end
+        local color = badge and COLOR_DUNGEON or COLOR_ELITE
+        self.Texture:SetDesaturated(true)
+        self.Texture:SetVertexColor(color[1], color[2], color[3])
+        self.Highlight:SetDesaturated(true)
+        self.Highlight:SetVertexColor(color[1], color[2], color[3])
         local tooLow = true
         for _, step in ipairs(entry.steps) do
             if not step.tooLow then tooLow = false end
