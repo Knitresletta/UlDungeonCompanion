@@ -33,7 +33,7 @@ local function RangeText(levels)
 end
 
 -- Colored "Level x-y" for a zone entry, with the territory in grey after
--- it, plus the fit word and color so tooltips can lay it out their own way.
+-- it, plus the fit word and color for /udc zones.
 function UlDC.ZoneLevelText(zone, playerLevel)
     local fit, r, g, b = UlDC.LevelFit(zone.levels, playerLevel)
     local text = string.format("|cff%02x%02x%02x%s|r", math.floor(r * 255 + 0.5), math.floor(g * 255 + 0.5),
