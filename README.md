@@ -10,8 +10,6 @@ A companion for **World of Warcraft: Forever** players who want to level on thei
 
 Entrance positions come from the vanilla 1.12 area trigger tables and are projected onto whichever map is open, so Forever's maps need no coordinate tables of their own. Level ranges are the classic ones. The four Forever dungeons open in the beta (The Hall of Thanes, Ruins of Lordaeron, Excavation Site: Wetlands, City of Dalaran) use the map positions the client shows, as read by [ForeverDB](https://foreverdb.net); the five announced for later (The Drowned City, Krol'dok Stronghold, Alcaz Prison, Blackmaw Hold, Shaper's Terrace) are added when the beta opens them.
 
-**Zone Levels**: The level range a zone is meant for and whose territory it is (Alliance, Horde, Contested), under the zone's name when the mouse rests on it on a continent map, colored for your level like the dungeon ranges. The ranges are Forever's own, read from the beta client by ForeverChanges, and they differ from the classic ones in most zones. Zones the client has no range for yet (Mount Hyjal, Shen'dralas) show nothing. `/udc zones` prints every zone with its range and the zone maps the data does not know.
-
 **Quest Givers**: The givers of the dungeon quests and elite quests you can go for, as quest markers on zone maps: pastel pink with a small dungeon or raid badge for steps that lead into an instance, pastel light blue for elite quests in the open world. A dungeon quest is any quest, or any quest chain, that at some point requires entering an instance. The whole chain counts, and the marker points at the first step you have not done yet, so a chain that ends in the Deadmines starts with its first quest in Westfall. The tooltip lists the step, what it leads to and in which instance, with levels in the game's difficulty colors. Quests you have already completed are left out (the client knows, even for quests never in your log), and so are steps already in your log, since the game tracks those itself. Faction, race and class restrictions come from the data, your character's from the client. Shown are goals from eight levels below you to six above. Clicking a marker sets a waypoint.
 
 **Quest Browser**: `/udc quests` (or the button in `/udc`) opens a window with the same steps grouped by the dungeon they lead to, then elite quests and raids. Hover a row for the chain, click it to open the map on the giver's zone with a waypoint.
@@ -32,13 +30,11 @@ Type `/udc` to open the options window. Every feature can also be toggled from c
 |---------|-------------|
 | `/udc dungeonpins` | Toggle dungeon entrance pins on the world map |
 | `/udc questpins` | Toggle quest giver markers on zone maps |
-| `/udc zonelevels` | Toggle zone level ranges under the zone name on continent maps |
 | `/udc quests` | Open or close the quest browser |
 | `/udc qd` | Print the current quest steps and the character filters |
 | `/udc qpins` | Print quest marker diagnostics for the open map |
 | `/udc dungeons` | Print the dungeons and raids sorted by level, colored for your level |
 | `/udc pins` | Print dungeon pin diagnostics for the open map |
-| `/udc zones` | Print the zone level ranges and the zones the data does not know |
 | `/udc probe` | Test which quest, map and journal APIs the client has; the result is kept in the saved variables |
 
 ## Installation

@@ -10,7 +10,6 @@ UlDC = { name = "UlDungeonCompanion", enabled = {} }
 local DEFAULTS = {
     dungeonpins = true,
     questpins   = true,
-    zonelevels  = true,
 }
 
 local function InitDB()
@@ -43,7 +42,6 @@ end
 local FEATURES = {
     { key = "dungeonpins", group = "Map", label = "Dungeon Entrances", desc = "Every dungeon and raid entrance on the world map, with its level range." },
     { key = "questpins",   group = "Map", label = "Quest Givers",      desc = "Givers of the dungeon and elite quests you can go for, on zone maps." },
-    { key = "zonelevels",  group = "Map", label = "Zone Levels",       desc = "Level range and territory of a zone under its name on continent maps." },
 }
 UlDC.FEATURE_GROUPS = { "Map" }
 UlDC.FEATURES = FEATURES
@@ -59,8 +57,6 @@ local COMMANDS = {
       fn = function() if UlDC.QuestPinDebug then UlDC.QuestPinDebug() end end },
     { key = "dungeons", label = "List dungeons", desc = "print the dungeons and raids sorted by level, colored for your level",
       fn = function() if UlDC.PrintDungeonList then UlDC.PrintDungeonList() end end },
-    { key = "zones", desc = "print the zone level ranges, colored for your level, and the zone maps the data does not know",
-      fn = function() if UlDC.PrintZoneList then UlDC.PrintZoneList() end end },
     { key = "pins", desc = "print dungeon pin diagnostics for the open map",
       fn = function() if UlDC.DungeonPinDebug then UlDC.DungeonPinDebug() end end },
     { key = "probe", label = "Probe client", desc = "test which quest and map APIs this client has; the result is kept in the saved variables",
@@ -83,7 +79,6 @@ end
 local function NotifyModules()
     if UlDC.RefreshDungeonPins then UlDC.RefreshDungeonPins() end
     if UlDC.RefreshQuestPins then UlDC.RefreshQuestPins() end
-    if UlDC.RefreshZoneLabels then UlDC.RefreshZoneLabels() end
     if UlDC.RefreshOptions then UlDC.RefreshOptions() end
 end
 
