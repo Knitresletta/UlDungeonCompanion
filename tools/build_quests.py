@@ -22,6 +22,8 @@ shipped too, so the addon can walk a chain back to the first undone step.
 """
 
 import argparse
+import os
+import json
 import sqlite3
 import sys
 from collections import Counter, defaultdict
@@ -58,6 +60,7 @@ AREA_KEY = {
 ALLIANCE_FACTIONS = {11, 12, 53, 55, 57, 64, 80, 84, 96, 122, 123, 124, 231, 534, 694, 875, 894, 1077, 1078}
 HORDE_FACTIONS = {29, 68, 83, 104, 118, 125, 126, 876, 995, 1174}
 RACES_ALLIANCE, RACES_HORDE = 77, 178
+SIDE_MASK = {"Alliance": RACES_ALLIANCE, "Horde": RACES_HORDE}
 
 # Quest -> creature that gives it, for quests the relation tables miss
 # (given through gossip scripts). Disciple of Naralex stands inside the
@@ -326,6 +329,12 @@ def main():
     out.append("UlDC.QUESTS = {")
     count = 0
     derived_races = 0
+    sided_from_site = 0
+    quest_sides = {}
+    sides_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "quest_sides.json")
+    if os.path.exists(sides_path):
+        with open(sides_path, encoding="utf-8") as f:
+            quest_sides = json.load(f)
     for qid in sorted(selected):
         q = quests[qid]
         i = info[qid]
@@ -356,6 +365,14 @@ def main():
             if len(sides) == 1:
                 races = sides.pop()
                 derived_races += 1
+            # ForeverChanges knows the side of the rest (tools/quest_sides.json,
+            # see fetch_sides.py); Alliance or Horde there wins, "Both" keeps
+            # whatever the giver said.
+            known = SIDE_MASK.get(quest_sides.get(str(qid)))
+            if known:
+                if races != known:
+                    races = known
+                    sided_from_site += 1
         if races:
             fields.append(f"r={races}")
         if q["RequiredClasses"]:
@@ -405,7 +422,8 @@ def main():
         flagged["dungeon" if fl & FLAG_DUNGEON else "elite" if fl & FLAG_ELITE else "raid" if fl & FLAG_RAID else "prerequisite"] += 1
     print(f"{count} quests written to {args.output}: {dict(flagged)}", file=sys.stderr)
     no_giver = [qid for qid in selected if not starters.get(qid)]
-    print(f"{len(no_giver)} without a known giver, {derived_races} given a side from their giver", file=sys.stderr)
+    print(f"{len(no_giver)} without a known giver, {derived_races} given a side from their giver, "
+          f"{sided_from_site} from ForeverChanges", file=sys.stderr)
 
 
 if __name__ == "__main__":
