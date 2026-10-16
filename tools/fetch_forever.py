@@ -60,15 +60,21 @@ ZONE_MAP = {
 SIDE_MASK = {"Alliance": 77, "Horde": 178, "Both": 0}
 
 # Quests started by an item ForeverChanges knows no source for: a giver
-# of kind "i" named after the item, with a world position (continent, x,
-# y, like the vanilla data) only when the drop has been seen on Forever.
-# Without one the hub says where the chain starts and sets no mark, which
-# beats a guess from vanilla spawns (Jonatan, 16.10.2026: the Dark Iron
-# dwarves at the Stonewrought Dam had nothing).
+# of kind "i" named after the item, with a position only when a Forever
+# source says where it drops: "mp" (retail map ID, percent) or "pos"
+# (continent, x, y). Without one the hub says where the chain starts and
+# sets no mark. Never a guess from vanilla spawns (Jonatan, 16.10.2026:
+# the Dark Iron dwarves at the Stonewrought Dam had nothing).
 ITEM_STARTS = {
-    # Underground Map (Hall of Thanes chain): ForeverChanges, Wowhead Forever
-    # and the Wowhead guide list no drop for the Dark Iron Map.
-    96391: {"n": "Dark Iron Map (an item, nobody knows the drop yet)"},
+    # Underground Map (Hall of Thanes chain). ForeverChanges and Wowhead list no
+    # drop; the community guides agree (60forever, wowhandbook, Icy Veins,
+    # MMONerds, Zockify, 16.10.2026): Dark Iron Spies at Ironband's Compound,
+    # south-east Dun Morogh, 77.8, 61.0 (60forever). Vanilla has 24 Dark Iron
+    # Spies spawned there too. The guides also name a lead-in from Beldin
+    # Steelgrill in Kharanos (A Visitor to Dun Morogh, Farsen's Watch, Nip 'Em
+    # in the Bud: slay 10 spies), not on ForeverChanges' dungeon-quest list.
+    96391: {"n": "Dark Iron Map, from Dark Iron Spies at Ironband's Compound",
+            "mp": (1426, 77.8, 61.0)},
 }
 
 
@@ -237,8 +243,8 @@ def cmd_build(d, out, vanilla_ids):
         "-- percentages: mp = { mapID, x, y } (retail map IDs, 0 to 100).",
         "-- Quests.lua converts them to world positions when the addon loads.",
         "-- Item-started quests whose source the site does not know carry a",
-        "-- hand-written giver of kind i (ITEM_STARTS), with a world position",
-        "-- only when the drop has been seen on Forever.",
+        "-- hand-written giver of kind i (ITEM_STARTS), with a position only",
+        "-- when a Forever source says where it drops.",
         "",
         "UlDC.QUESTS_FOREVER = {",
     ]
@@ -267,7 +273,9 @@ def cmd_build(d, out, vanilla_ids):
             parts.append(f"p={q['p']}")
         if qid in ITEM_STARTS and not q["g"]:
             it = ITEM_STARTS[qid]
-            if it.get("pos"):
+            if it.get("mp"):
+                parts.append("g={{n=%s,k=\"i\",mp={{%d,%.1f,%.1f}}}}" % (lua_str(it["n"]), *it["mp"]))
+            elif it.get("pos"):
                 parts.append("g={{n=%s,k=\"i\",pos={{%d,%.1f,%.1f}}}}" % (lua_str(it["n"]), *it["pos"]))
             else:
                 parts.append("g={{n=%s,k=\"i\"}}" % lua_str(it["n"]))
