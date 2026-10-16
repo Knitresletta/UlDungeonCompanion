@@ -289,16 +289,12 @@ local function StepTooltip(self)
     local kind, where = UlDC.StepLocation(step)
     if kind == "entrance" then
         GameTooltip:AddLine("Starts inside " .. where, 0.8, 0.8, 0.8)
-    elseif kind == "inside" then
-        GameTooltip:AddLine("In the log, the rest is inside " .. where, 0.8, 0.8, 0.8)
-    elseif kind == "next" then
-        GameTooltip:AddLine("In the log, continues at " .. where, 0.8, 0.8, 0.8)
     end
     if kind then
-        local what = (kind == "entrance" or kind == "inside") and "the entrance"
-            or kind == "next" and "where it continues" or "the giver"
         GameTooltip:AddLine(UlDC.IsMarked("q" .. step.id) and "Click to remove the marker"
-            or ("Click to mark " .. what .. " on the map"), 0.4, 0.8, 1)
+            or ("Click to mark " .. (kind == "entrance" and "the entrance" or "the giver") .. " on the map"), 0.4, 0.8, 1)
+    elseif step.inLog then
+        GameTooltip:AddLine("In your quest log, the log leads from here", 0.8, 0.8, 0.8)
     end
     GameTooltip:Show()
 end

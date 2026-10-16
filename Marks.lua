@@ -11,8 +11,9 @@
 -- carries the goals its step leads to and follows the chain: after every
 -- quest event it is placed again at the current step (UlDC.FollowMarks,
 -- Jonatan 16.10.2026: the marker points to where he is in the chain), and
--- goes away by itself once every goal is done. Nothing here touches the
--- game's own waypoint.
+-- goes away by itself once the step is in the log (the log leads from
+-- there, Jonatan the same day) or every goal is done. Nothing here
+-- touches the game's own waypoint.
 
 local PIN_TEMPLATE = "UlDCMarkPinTemplate"
 local ATLAS = "Waypoint-MapPin-Untracked"
@@ -108,7 +109,8 @@ end
 -- Places every quest mark at the current step of its chain again: the
 -- first goal still undone gives the step, the step gives the place. The
 -- mark is re-keyed to the new step so the hub and the pins find it under
--- "q<stepID>". Called from Quests.lua on every quest event.
+-- "q<stepID>", and dropped once the step is in the log or every goal is
+-- done. Called from Quests.lua on every quest event.
 function UlDC.FollowMarks()
     if not (UlDC.StepForGoal and UlDC.StepLocation) then return end
     local marks = Marks()
@@ -127,7 +129,7 @@ function UlDC.FollowMarks()
                     step.goals[#step.goals + 1] = goalID
                 end
             end
-            if not step then
+            if not step or step.inLog then
                 moved[#moved + 1] = { key = key }
             else
                 local _, _, fresh = UlDC.StepLocation(step)

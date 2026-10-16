@@ -19,10 +19,10 @@
 -- after a week.
 --
 -- UlDC.CurrentSteps() returns the list the pins and the hub draw, and
--- UlDC.StepLocation(step) says where the character is in a chain: the
--- giver while the step is untaken, where the chain continues once it is
--- in the log. The marks (Marks.lua) are re-resolved through it on every
--- quest event, so a mark set on a chain moves along as the steps get done.
+-- UlDC.StepLocation(step) says where a chain is picked up: the giver of
+-- the first step not done. The marks (Marks.lua) are re-resolved through
+-- it on every quest event, so a mark set on a chain moves along as steps
+-- get done, and goes away once the step is in the log.
 
 local RACE_BIT = { Human = 1, Orc = 2, Dwarf = 4, NightElf = 8, Scourge = 16, Tauren = 32, Gnome = 64, Troll = 128 }
 local CLASS_BIT = { WARRIOR = 1, PALADIN = 2, HUNTER = 4, ROGUE = 8, PRIEST = 16, SHAMAN = 64, MAGE = 128, WARLOCK = 256, DRUID = 1024 }
@@ -332,24 +332,6 @@ function UlDC.StepForGoal(goalID)
              inLog = IsInLog(stepID), tooLow = UnitLevel("player") < (stepQ.m or 0) }
 end
 
--- The quest right after stepID on the way to one of the goals: the chain
--- is walked back from each goal until the quest whose p is the step.
-local function NextInChain(stepID, goals)
-    for _, goalID in ipairs(goals or {}) do
-        local id = goalID
-        local hops = 0
-        while id and id ~= stepID and hops <= 50 do
-            local q = UlDC.QUESTS[id]
-            if not q then break end
-            if q.p == stepID then return id end
-            id = q.p
-            hops = hops + 1
-        end
-    end
-    return nil
-end
-UlDC.NextInChain = NextInChain
-
 local function EntranceNode(key)
     for _, d in ipairs(UlDC.DUNGEONS or {}) do
         if d.key == key then return d end
@@ -366,38 +348,18 @@ local function StepMark(step, label, note, p)
     return mark
 end
 
--- Where a step is on the world, which is where the character is in the
+-- Where a step is picked up, which is where the character is in the
 -- chain. Returns the kind, a name, and a mark table for Marks.lua; nil
--- when nothing is known.
---   "giver"    the step is not taken yet: its giver.
+-- when nothing is known, and nil for a step in the log: from there the
+-- quest log leads, the marker is not needed (Jonatan, 16.10.2026).
+--   "giver"    the step's giver.
 --   "entrance" the step starts inside an instance (a giver standing in
 --              there, or a quest started by an item found there): the
 --              entrance.
---   "inside"   the step is in the log and is itself a dungeon quest: the
---              entrance, the rest happens in there.
---   "next"     the step is in the log: the giver of the next quest in the
---              chain, who in vanilla chains is the one the step is turned
---              in to.
 function UlDC.StepLocation(step)
+    if step.inLog then return nil end
     local q = step.quest
     local title = UlDC.QuestTitle(step.id)
-    if step.inLog then
-        local node = q.d and q.d[1] and EntranceNode(q.d[1])
-        local mark = node and UlDC.EntranceMark and UlDC.EntranceMark(node)
-        if mark then
-            local tagged = StepMark(step, mark.label, title .. ", in the log, the rest is inside")
-            tagged.map, tagged.mx, tagged.my = mark.map, mark.mx, mark.my
-            tagged.continent, tagged.x, tagged.y = mark.continent, mark.x, mark.y
-            return "inside", node.name, tagged
-        end
-        local nextID = NextInChain(step.id, step.goals)
-        local nextQ = nextID and UlDC.QUESTS[nextID]
-        local giver = nextQ and nextQ.g and nextQ.g[1]
-        local p = giver and giver.pos and giver.pos[1]
-        if p then
-            return "next", giver.n, StepMark(step, giver.n, title .. ", in the log, continues here", p)
-        end
-    end
     local giver = q.g and q.g[1]
     local p = giver and giver.pos and giver.pos[1]
     if p then
