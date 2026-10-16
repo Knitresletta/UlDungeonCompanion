@@ -70,7 +70,8 @@ ITEM_STARTS = {
     # drop; the community guides agree (60forever, wowhandbook, Icy Veins,
     # MMONerds, Zockify, 16.10.2026): Dark Iron Spies at Ironband's Compound,
     # south-east Dun Morogh, 77.8, 61.0 (60forever). Vanilla has 24 Dark Iron
-    # Spies spawned there too. The guides also name a lead-in from Beldin
+    # Spies spawned there too. Seen in game 16.10.2026 (dropped from a Dark
+    # Iron Spy). The guides also name a lead-in from Beldin
     # Steelgrill in Kharanos (A Visitor to Dun Morogh, Farsen's Watch, Nip 'Em
     # in the Bud: slay 10 spies), not on ForeverChanges' dungeon-quest list.
     96391: {"n": "Dark Iron Map, from Dark Iron Spies at Ironband's Compound",
