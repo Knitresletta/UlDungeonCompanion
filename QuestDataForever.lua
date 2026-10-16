@@ -7,7 +7,8 @@
 -- percentages: mp = { mapID, x, y } (retail map IDs, 0 to 100).
 -- Quests.lua converts them to world positions when the addon loads.
 -- Item-started quests whose source the site does not know carry a
--- hand-placed giver of kind i with a world position (ITEM_STARTS).
+-- hand-written giver of kind i (ITEM_STARTS), with a world position
+-- only when the drop has been seen on Forever.
 
 UlDC.QUESTS_FOREVER = {
   [350]={t="Look to an Old Friend",l=31,m=16,r=77,p=393,g={{n="Master Mathias Shaw",k="c",mp={{1453,78.3,70.7}}}}},
@@ -69,7 +70,7 @@ UlDC.QUESTS_FOREVER = {
   [95795]={t="Fallen in the Fen",l=31,m=24,f=1,cf=1,d={"excav"},cd={"excav"},r=77,g={{n="Item found inside",k="i"}},gi="excav"},
   [95809]={t="Heartwoven",l=31,m=24,f=1,cf=1,d={"excav"},cd={"excav"},r=77,p=95647,g={{n="Item found inside",k="i"}},gi="excav"},
   [95810]={t="Lost Relic Carry",l=31,m=24,f=1,cf=1,d={"excav"},cd={"excav"},r=77,g={{n="Item found inside",k="i"}},gi="excav"},
-  [96391]={t="Underground Map",l=15,m=9,cf=1,cd={"hot"},r=77,g={{n="Dark Iron Map, drops at the Stonewrought Dam (unverified)",k="i",pos={{0,-4778.7,-3614.5}}}}},
+  [96391]={t="Underground Map",l=15,m=9,cf=1,cd={"hot"},r=77,g={{n="Dark Iron Map (an item, nobody knows the drop yet)",k="i"}}},
   [96393]={t="Old Ironforge Incursion",l=16,m=9,f=1,cf=1,d={"hot"},cd={"hot"},r=77,p=96391,g={{n="Earthseer Farsen",k="c",mp={{1426,64.8,58.4}}}}},
   [96394]={t="The Restless Dead",l=15,m=10,f=1,cf=1,d={"hot"},cd={"hot"},r=77,g={{n="Afadra Dunwall",k="c",mp={{1455,33.0,48.0}}}}},
   [96395]={t="An Ancient Grudge",l=15,m=10,f=1,cf=1,d={"hot"},cd={"hot"},g={{n="Ghostly Attendant",k="c"}},gi="hot"},

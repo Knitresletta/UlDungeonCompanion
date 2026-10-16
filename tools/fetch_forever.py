@@ -59,17 +59,16 @@ ZONE_MAP = {
 }
 SIDE_MASK = {"Alliance": 77, "Horde": 178, "Both": 0}
 
-# Quests started by an item ForeverChanges knows no source for, with the
-# best known place to get it: a giver of kind "i" with a world position
-# (continent, x, y, like the vanilla data), so the hub and the marks have
-# somewhere to point. Each entry says how sure it is.
+# Quests started by an item ForeverChanges knows no source for: a giver
+# of kind "i" named after the item, with a world position (continent, x,
+# y, like the vanilla data) only when the drop has been seen on Forever.
+# Without one the hub says where the chain starts and sets no mark, which
+# beats a guess from vanilla spawns (Jonatan, 16.10.2026: the Dark Iron
+# dwarves at the Stonewrought Dam had nothing).
 ITEM_STARTS = {
-    # Underground Map (Hall of Thanes chain): the Dark Iron Map. ForeverChanges
-    # and Wowhead Forever list no drop. Jonatan (16.10.2026) believes it starts in
-    # Loch Modan; the Dark Iron dwarves there stand at the Stonewrought Dam
-    # (14 Dark Iron Insurgents in vmangos). Unverified.
-    96391: {"n": "Dark Iron Map, drops at the Stonewrought Dam (unverified)",
-            "pos": (0, -4778.7, -3614.5)},
+    # Underground Map (Hall of Thanes chain): ForeverChanges, Wowhead Forever
+    # and the Wowhead guide list no drop for the Dark Iron Map.
+    96391: {"n": "Dark Iron Map (an item, nobody knows the drop yet)"},
 }
 
 
@@ -238,7 +237,8 @@ def cmd_build(d, out, vanilla_ids):
         "-- percentages: mp = { mapID, x, y } (retail map IDs, 0 to 100).",
         "-- Quests.lua converts them to world positions when the addon loads.",
         "-- Item-started quests whose source the site does not know carry a",
-        "-- hand-placed giver of kind i with a world position (ITEM_STARTS).",
+        "-- hand-written giver of kind i (ITEM_STARTS), with a world position",
+        "-- only when the drop has been seen on Forever.",
         "",
         "UlDC.QUESTS_FOREVER = {",
     ]
@@ -267,7 +267,10 @@ def cmd_build(d, out, vanilla_ids):
             parts.append(f"p={q['p']}")
         if qid in ITEM_STARTS and not q["g"]:
             it = ITEM_STARTS[qid]
-            parts.append("g={{n=%s,k=\"i\",pos={{%d,%.1f,%.1f}}}}" % (lua_str(it["n"]), *it["pos"]))
+            if it.get("pos"):
+                parts.append("g={{n=%s,k=\"i\",pos={{%d,%.1f,%.1f}}}}" % (lua_str(it["n"]), *it["pos"]))
+            else:
+                parts.append("g={{n=%s,k=\"i\"}}" % lua_str(it["n"]))
         elif q["g"]:
             gs = ",".join("{n=%s,k=\"c\",mp={{%d,%.1f,%.1f}}}" % (lua_str(g["n"]), g["map"], g["x"], g["y"]) for g in q["g"])
             parts.append("g={" + gs + "}")
