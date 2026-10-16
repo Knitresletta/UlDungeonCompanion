@@ -7,8 +7,12 @@
 -- (map, mx, my in percent) for Forever entrances, resolved on first draw.
 -- A MapCanvasDataProvider projects every mark onto whatever map is open,
 -- zone or continent, the way the dungeon pins are placed. A marker stays
--- until it is right-clicked (Jonatan's call, 15.10.2026); a quest mark
--- also goes away by itself once the quest is done. Nothing here touches the game's own waypoint.
+-- until it is right-clicked (Jonatan's call, 15.10.2026). A quest mark
+-- carries the goals its step leads to and follows the chain: after every
+-- quest event it is placed again at the current step (UlDC.FollowMarks,
+-- Jonatan 16.10.2026: the marker points to where he is in the chain), and
+-- goes away by itself once every goal is done. Nothing here touches the
+-- game's own waypoint.
 
 local PIN_TEMPLATE = "UlDCMarkPinTemplate"
 local ATLAS = "Waypoint-MapPin-Untracked"
@@ -79,13 +83,69 @@ function UlDC.EntranceMark(node)
     return mark
 end
 
--- Quest marks whose quest has been done since are dropped.
+-- True when every goal behind a mark is done (or it has none left).
+local function GoalsDone(mark)
+    for _, goalID in ipairs(mark.goals) do
+        if not UlDC.IsQuestCompleted(goalID) then return false end
+    end
+    return true
+end
+
+-- Quest marks that have nothing left to point at are dropped: every goal
+-- done, or (marks from before 0.14.0, without goals) the quest itself.
 local function Prune()
     if not UlDC.IsQuestCompleted then return end
     local marks = Marks()
     for key, mark in pairs(marks) do
-        if mark.quest and UlDC.IsQuestCompleted(mark.quest) then marks[key] = nil end
+        if mark.goals then
+            if GoalsDone(mark) then marks[key] = nil end
+        elseif mark.quest and UlDC.IsQuestCompleted(mark.quest) then
+            marks[key] = nil
+        end
     end
+end
+
+-- Places every quest mark at the current step of its chain again: the
+-- first goal still undone gives the step, the step gives the place. The
+-- mark is re-keyed to the new step so the hub and the pins find it under
+-- "q<stepID>". Called from Quests.lua on every quest event.
+function UlDC.FollowMarks()
+    if not (UlDC.StepForGoal and UlDC.StepLocation) then return end
+    local marks = Marks()
+    local moved = {}
+    for key, mark in pairs(marks) do
+        if mark.goals then
+            -- The step of the first goal still undone, carrying every
+            -- undone goal that shares it, so the step knows where the
+            -- chain continues once it is in the log.
+            local step
+            for _, goalID in ipairs(mark.goals) do
+                local s = UlDC.StepForGoal(goalID)
+                if s and not step then
+                    step = s
+                elseif s and s.id == step.id then
+                    step.goals[#step.goals + 1] = goalID
+                end
+            end
+            if not step then
+                moved[#moved + 1] = { key = key }
+            else
+                local _, _, fresh = UlDC.StepLocation(step)
+                local newKey = "q" .. step.id
+                if fresh and (newKey ~= key or fresh.note ~= mark.note or fresh.label ~= mark.label) then
+                    fresh.goals = mark.goals
+                    moved[#moved + 1] = { key = key, newKey = newKey, mark = fresh }
+                end
+            end
+        end
+    end
+    if #moved == 0 then return end
+    for _, m in ipairs(moved) do
+        marks[m.key] = nil
+        if m.newKey then marks[m.newKey] = m.mark end
+    end
+    UlDC.RefreshMarks()
+    if UlDC.RefreshHub then UlDC.RefreshHub() end
 end
 
 ------------------------------------------------------------------------

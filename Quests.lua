@@ -18,7 +18,11 @@
 -- in the saved variables (UlDungeonCompanionDB.server) and refreshed
 -- after a week.
 --
--- UlDC.CurrentSteps() returns the list the pins and the hub draw.
+-- UlDC.CurrentSteps() returns the list the pins and the hub draw, and
+-- UlDC.StepLocation(step) says where the character is in a chain: the
+-- giver while the step is untaken, where the chain continues once it is
+-- in the log. The marks (Marks.lua) are re-resolved through it on every
+-- quest event, so a mark set on a chain moves along as the steps get done.
 
 local RACE_BIT = { Human = 1, Orc = 2, Dwarf = 4, NightElf = 8, Scourge = 16, Tauren = 32, Gnome = 64, Troll = 128 }
 local CLASS_BIT = { WARRIOR = 1, PALADIN = 2, HUNTER = 4, ROGUE = 8, PRIEST = 16, SHAMAN = 64, MAGE = 128, WARLOCK = 256, DRUID = 1024 }
@@ -313,33 +317,103 @@ function UlDC.CurrentSteps()
     return list
 end
 
--- Where a step is on the world: its giver, or the entrance of the
--- instance it starts inside (a giver standing in the instance, or a
--- quest started by an item found there). Returns the kind ("giver" or
--- "entrance"), a name, and a mark table for Marks.lua; nil when nothing
--- is known.
+-- A step built for one goal alone, the shape UlDC.CurrentSteps() uses,
+-- without the level window: the marks follow their goal past it. nil when
+-- the goal is done, unknown, or its chain loops.
+function UlDC.StepForGoal(goalID)
+    local goal = UlDC.QUESTS[goalID]
+    if not goal or IsCompleted(goalID) then return nil end
+    local stepID, hops = FirstUndone(goalID)
+    local stepQ = stepID and UlDC.QUESTS[stepID]
+    if not stepQ then return nil end
+    local keys = {}
+    for _, k in ipairs(goal.d or {}) do keys[k] = true end
+    return { id = stepID, quest = stepQ, goals = { goalID }, flags = goal.f or 0, keys = keys, hops = hops,
+             inLog = IsInLog(stepID), tooLow = UnitLevel("player") < (stepQ.m or 0) }
+end
+
+-- The quest right after stepID on the way to one of the goals: the chain
+-- is walked back from each goal until the quest whose p is the step.
+local function NextInChain(stepID, goals)
+    for _, goalID in ipairs(goals or {}) do
+        local id = goalID
+        local hops = 0
+        while id and id ~= stepID and hops <= 50 do
+            local q = UlDC.QUESTS[id]
+            if not q then break end
+            if q.p == stepID then return id end
+            id = q.p
+            hops = hops + 1
+        end
+    end
+    return nil
+end
+UlDC.NextInChain = NextInChain
+
+local function EntranceNode(key)
+    for _, d in ipairs(UlDC.DUNGEONS or {}) do
+        if d.key == key then return d end
+    end
+    return nil
+end
+
+-- A mark for Marks.lua, tagged with the step and its goals so the mark
+-- can follow the chain as the steps get done (UlDC.FollowMarks).
+local function StepMark(step, label, note, p)
+    local mark = { label = label, note = note, quest = step.id, goals = {} }
+    for i, g in ipairs(step.goals or {}) do mark.goals[i] = g end
+    if p then mark.continent, mark.x, mark.y = p[1], p[2], p[3] end
+    return mark
+end
+
+-- Where a step is on the world, which is where the character is in the
+-- chain. Returns the kind, a name, and a mark table for Marks.lua; nil
+-- when nothing is known.
+--   "giver"    the step is not taken yet: its giver.
+--   "entrance" the step starts inside an instance (a giver standing in
+--              there, or a quest started by an item found there): the
+--              entrance.
+--   "inside"   the step is in the log and is itself a dungeon quest: the
+--              entrance, the rest happens in there.
+--   "next"     the step is in the log: the giver of the next quest in the
+--              chain, who in vanilla chains is the one the step is turned
+--              in to.
 function UlDC.StepLocation(step)
     local q = step.quest
+    local title = UlDC.QuestTitle(step.id)
+    if step.inLog then
+        local node = q.d and q.d[1] and EntranceNode(q.d[1])
+        local mark = node and UlDC.EntranceMark and UlDC.EntranceMark(node)
+        if mark then
+            local tagged = StepMark(step, mark.label, title .. ", in the log, the rest is inside")
+            tagged.map, tagged.mx, tagged.my = mark.map, mark.mx, mark.my
+            tagged.continent, tagged.x, tagged.y = mark.continent, mark.x, mark.y
+            return "inside", node.name, tagged
+        end
+        local nextID = NextInChain(step.id, step.goals)
+        local nextQ = nextID and UlDC.QUESTS[nextID]
+        local giver = nextQ and nextQ.g and nextQ.g[1]
+        local p = giver and giver.pos and giver.pos[1]
+        if p then
+            return "next", giver.n, StepMark(step, giver.n, title .. ", in the log, continues here", p)
+        end
+    end
     local giver = q.g and q.g[1]
     local p = giver and giver.pos and giver.pos[1]
     if p then
-        return "giver", giver.n, { label = giver.n, note = UlDC.QuestTitle(step.id), quest = step.id,
-                                   continent = p[1], x = p[2], y = p[3] }
+        return "giver", giver.n, StepMark(step, giver.n, title, p)
     end
     local key = q.gi or (q.d and q.d[1]) or (q.cd and q.cd[1])
     if not key then
         for k in pairs(step.keys or {}) do key = k break end
     end
-    local node
-    for _, d in ipairs(UlDC.DUNGEONS or {}) do
-        if d.key == key then node = d break end
-    end
-    if not node then return nil end
-    local mark = UlDC.EntranceMark and UlDC.EntranceMark(node)
+    local node = key and EntranceNode(key)
+    local mark = node and UlDC.EntranceMark and UlDC.EntranceMark(node)
     if not mark then return nil end
-    mark.note = UlDC.QuestTitle(step.id) .. ", starts inside"
-    mark.quest = step.id
-    return "entrance", node.name, mark
+    local tagged = StepMark(step, mark.label, title .. ", starts inside")
+    tagged.map, tagged.mx, tagged.my = mark.map, mark.mx, mark.my
+    tagged.continent, tagged.x, tagged.y = mark.continent, mark.x, mark.y
+    return "entrance", node.name, tagged
 end
 
 function UlDC.DungeonName(key)
@@ -381,6 +455,7 @@ end
 
 local function Refresh()
     Invalidate()
+    if UlDC.FollowMarks then UlDC.FollowMarks() end
     if UlDC.RefreshQuestPins then UlDC.RefreshQuestPins() end
     if UlDC.RefreshHub then UlDC.RefreshHub() end
 end
