@@ -68,6 +68,27 @@ SIDE_MASK = {"Alliance": RACES_ALLIANCE, "Horde": RACES_HORDE}
 GIVER_OVERRIDES = {
     1500: 3678,   # Waking Naralex
     999: 3678,    # When Dreams Turn to Nightmares
+    # Relation rows that ended before 1.12 or never existed: these are
+    # given through gossip on a live 1.12 server (checked 16.10.2026).
+    7487: 14387,  # Attunement to the Core, Lothos Riftwaker, Blackrock Mountain
+    7521: 14347,  # Thunderaan the Windseeker, Highlord Demitrian, Silithus
+    7462: 14368,  # The Treasure of the Shen'dralar, Lorekeeper Lydros, Dire Maul
+    1318: 14325,  # Unfinished Gordok Business, Captain Kromcrush, Dire Maul
+    8869: 8125,   # Sweet Serenity, Dirge Quikcleave, Tanaris
+    9030: 16016,  # Anthion's Parting Words, Anthion Harmon, Eastern Plaguelands
+    908: 12736,   # Amongst the Ruins (Horde), Je'neu Sancrea, Zoram'gar Outpost
+}
+
+# Givers summoned by scripts inside an instance: no spawn row, so the
+# instance has to be named by hand (creature entry -> dungeon key).
+INSIDE_GIVERS = {
+    7918: "uldaman",   # Stone Watcher of Norgannon
+    7750: "brd",       # Corporal Thund Splithoof
+    10296: "brs",      # Vaelan
+    10776: "brs",      # Finkle Einhorn
+    16031: "strat",    # Ysida Harmon
+    16073: "brs",      # Spirit of Lord Valthalak
+    14566: "dm",       # Ancient Equine Spirit
 }
 
 TYPE_ELITE, TYPE_RAID, TYPE_DUNGEON = 1, 62, 81
@@ -204,6 +225,46 @@ def main():
     for quest, creature in GIVER_OVERRIDES.items():
         if not starters.get(quest):
             starters[quest].append(("c", creature))
+    enders = defaultdict(list)  # quest -> [(map, x, y)] of the creatures it is turned in to
+    for cid, q in conn.execute(f"select id, quest from creature_involvedrelation where {active()}"):
+        enders[q].extend(cpos.get(cid, []))
+
+    def item_source(qid, item):
+        """Where an item that starts a quest comes from: ("inside", key)
+        when everything that drops it lives in one instance, ("outdoor",
+        name, (map, x, y)) for the dropper nearest the quest's turn-in
+        (or the most spawned one), None when nothing drops it."""
+        sources = droppers.get(item, ())
+        if not sources:
+            return None
+        counters = []
+        outdoor = []  # (kind, entry, positions)
+        for kind, e in sources:
+            counter = (cmaps if kind == "c" else gmaps).get(e, Counter())
+            counters.append(counter)
+            positions = (cpos if kind == "c" else gpos).get(e, [])
+            if positions:
+                outdoor.append((kind, e, positions))
+        # Inside when most of what drops it lives in one instance (A Crumpled
+        # Up Note: sixty BRD creatures against two outside), else the outdoor
+        # dropper nearest the turn-in.
+        key = dominant_instance(counters)
+        if key or not outdoor:
+            return ("inside", key) if key else None
+        best = None
+        goals = enders.get(qid, [])
+        for kind, e, positions in outdoor:
+            for m, x, y in positions:
+                if goals:
+                    d = min(((x - gx) ** 2 + (y - gy) ** 2) ** 0.5 for gm, gx, gy in goals if gm == m) if any(gm == m for gm, _, _ in goals) else 1e9
+                else:
+                    d = -len(positions)
+                if best is None or d < best[0]:
+                    best = (d, kind, e, (m, x, y))
+        _, kind, e, pos = best
+        name = (creatures if kind == "c" else objects).get(e, {}).get("name", "?")
+        many = len(sources) > 6
+        return ("outdoor", name, pos, many, kind)
 
     if args.check:
         by_area = defaultdict(Counter)
@@ -258,11 +319,19 @@ def main():
 
         giver_inside = None
         for kind, e in starters.get(qid, ()):
+            if kind == "c" and e in INSIDE_GIVERS:
+                giver_inside = INSIDE_GIVERS[e]
+                keys.add(giver_inside)
+                continue
             if kind == "c":
                 inst, outdoor = instance_share(cmaps.get(e, Counter()))
             elif kind == "g":
                 inst, outdoor = instance_share(gmaps.get(e, Counter()))
             else:
+                src = item_source(qid, e)
+                if src and src[0] == "inside":
+                    giver_inside = src[1]
+                    keys.add(giver_inside)
                 continue
             if inst and outdoor == 0:
                 giver_inside = inst.most_common(1)[0][0]
@@ -323,12 +392,14 @@ def main():
                "--   p = previous quest in the chain, x = exclusive group,\n"
                "--   g = givers { n = name, k = kind (c creature, g object, i item),\n"
                "--                c = continent, x, y = world position } (up to three\n"
-               "--                positions each; none when the giver is inside an instance),\n"
+               "--                positions each; none when the giver is inside an instance;\n"
+               "--                an item names its dropper and stands where that spawns),\n"
                "--   gi = dungeon key when the giver stands inside that instance.\n"
                "-- }\n")
     out.append("UlDC.QUESTS = {")
     count = 0
     derived_races = 0
+    item_placed = 0
     sided_from_site = 0
     quest_sides = {}
     sides_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "quest_sides.json")
@@ -395,6 +466,14 @@ def main():
             else:
                 name = items.get(e, {}).get("name", "?")
                 positions = []
+                src = item_source(qid, e)
+                if src and src[0] == "outdoor":
+                    _, dropper, pos, many, dkind = src
+                    if dropper != name:
+                        verb = "dropped by" if dkind == "c" else "found in"
+                        name = f"{name}, {verb} {dropper}" + (" and others" if many else "")
+                    positions = [pos]
+                    item_placed += 1
             parts = [f"n={lua_str(name)}", f"k={lua_str(kind)}", f"id={e}"]
             seen = []
             for m, x, y in positions:
@@ -420,7 +499,7 @@ def main():
     for qid in selected:
         fl = info[qid]["flags"]
         flagged["dungeon" if fl & FLAG_DUNGEON else "elite" if fl & FLAG_ELITE else "raid" if fl & FLAG_RAID else "prerequisite"] += 1
-    print(f"{count} quests written to {args.output}: {dict(flagged)}", file=sys.stderr)
+    print(f"{count} quests written to {args.output}: {dict(flagged)}, {item_placed} item-started quests placed at a drop", file=sys.stderr)
     no_giver = [qid for qid in selected if not starters.get(qid)]
     print(f"{len(no_giver)} without a known giver, {derived_races} given a side from their giver, "
           f"{sided_from_site} from ForeverChanges", file=sys.stderr)

@@ -282,9 +282,7 @@ local function StepTooltip(self)
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
     local giver = step.quest.g and step.quest.g[1]
     GameTooltip:AddLine(giver and giver.n or (step.quest.gi and ("Inside " .. UlDC.DungeonName(step.quest.gi))) or "Unknown giver", 1, 0.82, 0)
-    if giver and giver.k == "i" and not giver.pos and not step.quest.gi then
-        GameTooltip:AddLine("Starts from an item; where it drops on Forever is not known yet", 0.8, 0.8, 0.8)
-    end
+
     UlDC.AddStepLines(step, UnitLevel("player"))
     local kind, where = UlDC.StepLocation(step)
     if kind == "entrance" then
@@ -295,6 +293,10 @@ local function StepTooltip(self)
             or ("Click to mark " .. (kind == "entrance" and "the entrance" or "the giver") .. " on the map"), 0.4, 0.8, 1)
     elseif step.inLog then
         GameTooltip:AddLine("In your quest log, the log leads from here", 0.8, 0.8, 0.8)
+    elseif giver and giver.k == "i" then
+        GameTooltip:AddLine("Starts from an item; where it comes from is not known", 0.8, 0.8, 0.8)
+    elseif giver then
+        GameTooltip:AddLine("The giver appears during an event, no fixed place", 0.8, 0.8, 0.8)
     end
     GameTooltip:Show()
 end

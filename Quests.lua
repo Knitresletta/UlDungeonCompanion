@@ -365,9 +365,6 @@ function UlDC.StepLocation(step)
     if p then
         return "giver", giver.n, StepMark(step, giver.n, title, p)
     end
-    -- Started by an item with no known drop and not inside an instance:
-    -- nowhere to point yet.
-    if giver and giver.k == "i" and not q.gi then return nil end
     local key = q.gi or (q.d and q.d[1]) or (q.cd and q.cd[1])
     if not key then
         for k in pairs(step.keys or {}) do key = k break end
