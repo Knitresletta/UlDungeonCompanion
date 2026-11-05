@@ -153,7 +153,8 @@ def cmd_fetch(d):
     index = os.path.join(d, "dungeon-quests.html")
     fetch(SITE + "/dungeon-quests", index)
     html = open(index, encoding="utf-8").read()
-    todo = sorted({int(x) for x in re.findall(r'href="/quest/(\d+)"', html)})
+    # Links are /quest/<id> or, since November 2026, /quest/<id>/<slug>.
+    todo = sorted({int(x) for x in re.findall(r'href="/quest/(\d+)(?:/[^"]*)?"', html)})
     seen = set()
     while todo:
         qid = todo.pop(0)
@@ -180,9 +181,9 @@ def overview_givers(d):
         return {}
     p = payload_of(open(path, encoding="utf-8").read())
     out = {}
-    rows = re.split(r'(?="href":"/quest/\d+","lang")', p)
+    rows = re.split(r'(?="href":"/quest/\d+(?:/[^"]*)?","lang")', p)
     for row in rows:
-        m = re.match(r'"href":"/quest/(\d+)"', row)
+        m = re.match(r'"href":"/quest/(\d+)(?:/[^"]*)?"', row)
         if not m:
             continue
         qid = int(m.group(1))

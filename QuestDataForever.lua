@@ -25,6 +25,7 @@ UlDC.QUESTS_FOREVER = {
   [2746]={t="Items of Some Consequence",l=31,m=16,r=77,p=2745,g={{n="Tyrion",k="c",mp={{1453,73.2,35.6}}}}},
   [2948]={t="Gnome Improvement",l=35,m=28,r=77,p=2947,g={{n="Talvash del Kissel",k="c",mp={{1426,56.9,21.7}}}}},
   [2950]={t="Nogg's Ring Redo",l=35,m=28,r=178,p=2949,g={{n="Nogg",k="c",mp={{1454,76.0,25.4}}}}},
+  [3301]={t="Mura Runetotem",l=15,m=10,r=178,p=880,g={{n="Tonga Runetotem",k="c",mp={{1413,52.3,31.9}}}}},
   [3369]={t="In Nightmares (Horde)",l=25,m=15,r=178,p=6981,g={{n="Falla Sagewind",k="c",mp={{1413,48.2,32.8}}}}},
   [3370]={t="In Nightmares (Alliance)",l=25,m=15,r=77,p=6981,g={{n="Falla Sagewind",k="c",mp={{1413,48.2,32.8}}}}},
   [3765]={t="The Corruption Abroad",l=24,m=18,cf=1,cd={"bfd"},r=77,g={{n="Argos Nightwhisper",k="c",mp={{1453,36.2,67.6}}}}},

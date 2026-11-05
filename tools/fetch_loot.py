@@ -8,7 +8,9 @@ vanilla data from build_loot.py.
 The pages are Next.js: the data sits in the self.__next_f.push payload as
 JSON. Each page has "bosses": [ { name, kind (boss or rare), level,
 items: [ { i item ID, n name, q quality, l item level, r required level,
-s slot text, c item class, u subclass, t status (new, changed, ...),
+s slot text, c item class, u the item's URL slug (was the subclass until
+October 2026; the subclass is now read from the tooltip lines in x, see
+item_subclass), t status (new, changed, ...),
 z drop chance in percent when the site knows it } ] } ].
 
 Usage: python3 -I tools/fetch_loot.py -o LootDataForever.lua
@@ -26,6 +28,43 @@ import time
 import urllib.request
 
 BASE = "https://foreverchanges.pro"
+
+# Since November 2026 the item's "u" field is the site's URL slug, not the
+# subclass. The subclass is read from the tooltip line that carries a tab,
+# "Chest\tMail" or "One-Hand\tSword", with vanilla's subclass numbers.
+ARMOR_SUB = {"Cloth": 1, "Leather": 2, "Mail": 3, "Plate": 4, "Shield": 6, "Libram": 7, "Idol": 8, "Totem": 9}
+WEAPON_SUB = {"Axe": 0, "Bow": 2, "Gun": 3, "Mace": 4, "Polearm": 6, "Sword": 7, "Staff": 10,
+              "Fist Weapon": 13, "Dagger": 15, "Thrown": 16, "Spear": 17, "Crossbow": 18, "Wand": 19,
+              "Fishing Pole": 20}
+TWO_HANDED = {"Axe": 1, "Mace": 5, "Sword": 8}
+RECIPE_SUB = {"Book": 0, "Leatherworking": 1, "Tailoring": 2, "Engineering": 3, "Blacksmithing": 4,
+              "Cooking": 5, "Alchemy": 6, "First Aid": 7, "Enchanting": 8, "Fishing": 9}
+PROJECTILE_SUB = {"Arrow": 2, "Bullet": 3}
+QUIVER_SUB = {"Quiver": 2, "Ammo Pouch": 3}
+
+
+def item_subclass(it):
+    u = it.get("u")
+    if isinstance(u, int):
+        return u
+    if isinstance(u, str) and u.isdigit():
+        return int(u)
+    cls = it.get("c")
+    if cls == 2 and it.get("s") == "Thrown":
+        return WEAPON_SUB["Thrown"]
+    table = {4: ARMOR_SUB, 2: WEAPON_SUB, 9: RECIPE_SUB, 6: PROJECTILE_SUB, 11: QUIVER_SUB}.get(cls)
+    if not table:
+        return 0
+    for line in it.get("x", []):
+        if "\t" not in line:
+            continue
+        hand, kind = line.split("\t", 1)
+        if kind in table:
+            if cls == 2 and hand.startswith("Two-Hand") and kind in TWO_HANDED:
+                return TWO_HANDED[kind]
+            return table[kind]
+    return 0
+
 AGENT = "UlDungeonCompanion/0.11 (knitresletta)"
 PAUSE = 0.7
 
@@ -186,7 +225,7 @@ def main():
                 chance = it.get("z") or 0
                 out.append("      {%d,%s,%d,%s,%d,%d,0,-1,%s,%s}," % (
                     int(it.get("i") or 0), lua_str(it.get("n") or "?"), int(it.get("q") or 1),
-                    ("%g" % chance), int(it.get("c", 0) or 0), int(it.get("u", 0) or 0),
+                    ("%g" % chance), int(it.get("c", 0) or 0), item_subclass(it),
                     lua_str(it.get("s") or ""), lua_str(it.get("t") or "same")))
             out.append("    } },")
         out.append("  },")
