@@ -1,20 +1,31 @@
 #!/usr/bin/env python3
-"""Build QuestDataForever.lua from saved ForeverChanges quest pages.
+"""Build QuestData.lua from ForeverChanges (https://foreverchanges.pro).
 
-ForeverChanges (https://foreverchanges.pro) documents the quests Forever
-added on top of vanilla, with givers and map positions read from the beta
-client and Wowhead's Forever database. The vanilla data in QuestData.lua
-comes from vmangos and does not know these quests, so this script fills
-the gap for quests whose ID is not in vmangos.
+Forever changed quests, chains, levels and givers against vanilla 1.12,
+so the addon's quest data comes from Forever sources only (Jonatan,
+06.11.2026): ForeverChanges reads the Forever client and what the users
+of its addon see in game. Nothing is taken from vanilla databases.
 
 Usage:
-  python3 -I tools/fetch_forever.py fetch <dir>      download pages listed on /dungeon-quests (and chains) into <dir>
-  python3 -I tools/fetch_forever.py build <dir> -o QuestDataForever.lua
+  python3 -I tools/fetch_forever.py fetch [<cache>]   every quest page in the site's sitemap, plus the dungeon pages
+  python3 -I tools/fetch_forever.py build [<cache>] -o QuestData.lua
 
-Pages are Next.js "flight" payloads; the quest facts are React elements,
-the map pins are plain JSON. Only positions as map percentages on retail
-map IDs are available, so the addon converts them to world positions at
-load time (see Quests.lua).
+<cache> (default ~/.cache/foreverchanges) keeps one HTML file per quest
+(quest/<id>.html) and per dungeon (dungeons/<slug>.html). A file already
+there is not fetched again, so a refresh only downloads what the sitemap
+lists as new; delete a file to refetch it. The first fetch is about 5200
+pages at 0.7 s each.
+
+What is read, and from where:
+  quest page   title, level, minimum level, side, type (dungeon, elite,
+               raid), class, the instance it is for, the chain, start and
+               end NPC, objective text, givers with map pins (map
+               percentages on retail map IDs).
+  dungeon page the quests of each instance (ids), the quest before each
+               (prev) and the item that starts it, for quest pages that
+               carry no chain or pin.
+Pages are Next.js "flight" payloads: facts are React elements, map pins
+plain JSON.
 """
 import json
 import os
@@ -26,58 +37,73 @@ import urllib.request
 SITE = "https://foreverchanges.pro"
 UA = "UlDungeonCompanion data build (contact: github.com/Knitresletta/UlDungeonCompanion)"
 PAUSE = 0.7
+DEFAULT_CACHE = os.path.expanduser("~/.cache/foreverchanges")
 
-# Dungeon names as ForeverChanges writes them in page titles -> DungeonData keys.
-DUNGEON_KEY = {
-    "The Hall of Thanes": "hot", "Hall of Thanes": "hot",
-    "Ruins of Lordaeron": "rol",
-    "Excavation Site: Wetlands": "excav", "Excavation Site": "excav",
-    "City of Dalaran": "dalaran",
-    "Ragefire Chasm": "rfc", "Wailing Caverns": "wc", "The Deadmines": "deadmines", "Deadmines": "deadmines",
-    "Shadowfang Keep": "sfk", "The Stockade": "stockade", "Stormwind Stockade": "stockade",
-    "Blackfathom Deeps": "bfd", "Gnomeregan": "gnomeregan", "Razorfen Kraul": "rfk",
-    "Scarlet Monastery": "sm", "Razorfen Downs": "rfd", "Uldaman": "uldaman", "Zul'Farrak": "zf",
-    "Maraudon": "maraudon", "Sunken Temple": "st", "The Temple of Atal'Hakkar": "st",
-    "Blackrock Depths": "brd", "Blackrock Spire": "brs", "Lower Blackrock Spire": "brs", "Upper Blackrock Spire": "brs",
-    "Dire Maul": "dm", "Scholomance": "scholo", "Stratholme": "strat",
+# ForeverChanges dungeon page slug -> DungeonData key (wings share a key).
+SLUG_KEY = {
+    "hall-of-thanes": "hot", "ragefire-chasm": "rfc", "ruins-of-lordaeron": "rol",
+    "wailing-caverns": "wc", "the-deadmines": "deadmines", "shadowfang-keep": "sfk",
+    "blackfathom-deeps": "bfd", "the-stockade": "stockade", "excavation-site": "excav",
+    "city-of-dalaran": "dalaran", "gnomeregan": "gnomeregan", "razorfen-kraul": "rfk",
+    "scarlet-monastery-graveyard": "sm", "scarlet-monastery-library": "sm",
+    "scarlet-monastery-armory": "sm", "scarlet-monastery-cathedral": "sm",
+    "the-drowned-city": "drowned", "razorfen-downs": "rfd", "kroldok-stronghold": "kroldok",
+    "uldaman": "uldaman", "zulfarrak": "zf", "maraudon": "maraudon", "alcaz-prison": "alcaz",
+    "sunken-temple": "st", "blackrock-depths": "brd", "dire-maul-east": "dm",
+    "dire-maul-north": "dm", "dire-maul-west": "dm", "blackmaw-hold": "blackmaw",
+    "lower-blackrock-spire": "brs", "upper-blackrock-spire": "brs", "scholomance": "scholo",
+    "shapers-terrace": "shapers", "stratholme-main-gate": "strat", "stratholme-service-gate": "strat",
+}
+
+# Instance names as quest page titles write them ("... quest in X") -> key.
+NAME_KEY = {
+    "The Hall of Thanes": "hot", "Hall of Thanes": "hot", "Ragefire Chasm": "rfc",
+    "Ruins of Lordaeron": "rol", "Wailing Caverns": "wc", "The Deadmines": "deadmines",
+    "Deadmines": "deadmines", "Shadowfang Keep": "sfk", "Blackfathom Deeps": "bfd",
+    "The Stockade": "stockade", "Stormwind Stockade": "stockade",
+    "Excavation Site: Wetlands": "excav", "Excavation Site": "excav", "City of Dalaran": "dalaran",
+    "Gnomeregan": "gnomeregan", "Razorfen Kraul": "rfk", "Scarlet Monastery": "sm",
+    "The Drowned City": "drowned", "Razorfen Downs": "rfd", "Krol'dok Stronghold": "kroldok",
+    "Uldaman": "uldaman", "Zul'Farrak": "zf", "Maraudon": "maraudon", "Alcaz Prison": "alcaz",
+    "Sunken Temple": "st", "The Temple of Atal'Hakkar": "st", "Blackrock Depths": "brd",
+    "Dire Maul": "dm", "Blackmaw Hold": "blackmaw", "Blackrock Spire": "brs",
+    "Lower Blackrock Spire": "brs", "Upper Blackrock Spire": "brs", "Scholomance": "scholo",
+    "Shaper's Terrace": "shapers", "Stratholme": "strat",
+    # Raids: the site has no dungeon pages for them, but quest pages name them.
+    "Onyxia's Lair": "onyxia", "Molten Core": "mc", "Blackwing Lair": "bwl", "Zul'Gurub": "zg",
+    "Ruins of Ahn'Qiraj": "aq20", "Ahn'Qiraj": "aq40", "Temple of Ahn'Qiraj": "aq40", "Naxxramas": "naxx",
 }
 RAID_KEYS = {"onyxia", "mc", "bwl", "zg", "aq20", "aq40", "naxx"}
+# Quest list categories (/quests/<slug>) that are raids.
+RAID_CAT = {"onyxias-lair": "onyxia", "molten-core": "mc", "molten-core-dungeon": "mc", "blackwing-lair": "bwl",
+            "zulgurub": "zg", "ruins-of-ahnqiraj": "aq20", "ahnqiraj": "aq40", "naxxramas": "naxx"}
 
-# Zone names as written on /dungeon-quests -> retail map IDs (the ones the
-# Forever client uses; Stormwind 1453 and Westfall 1436 verified in game).
-ZONE_MAP = {
-    "Dun Morogh": 1426, "Ironforge": 1455, "Elwynn Forest": 1429, "Stormwind City": 1453, "Westfall": 1436,
-    "Redridge Mountains": 1433, "Duskwood": 1431, "Loch Modan": 1432, "Wetlands": 1437, "Arathi Highlands": 1417,
-    "Hillsbrad Foothills": 1424, "Alterac Mountains": 1416, "Silverpine Forest": 1421, "Tirisfal Glades": 1420,
-    "Undercity": 1458, "Stranglethorn Vale": 1434, "Badlands": 1418, "Swamp of Sorrows": 1435, "The Hinterlands": 1425,
-    "Searing Gorge": 1427, "Burning Steppes": 1428, "Blasted Lands": 1419, "Western Plaguelands": 1422,
-    "Eastern Plaguelands": 1423, "Deadwind Pass": 1430,
-    "Durotar": 1411, "Orgrimmar": 1454, "Mulgore": 1412, "Thunder Bluff": 1456, "The Barrens": 1413,
-    "Teldrassil": 1438, "Darnassus": 1457, "Darkshore": 1439, "Ashenvale": 1440, "Stonetalon Mountains": 1442,
-    "Desolace": 1443, "Thousand Needles": 1441, "Dustwallow Marsh": 1445, "Feralas": 1444, "Tanaris": 1446,
-    "Azshara": 1447, "Felwood": 1448, "Un'Goro Crater": 1449, "Moonglade": 1450, "Silithus": 1451, "Winterspring": 1452,
-}
 SIDE_MASK = {"Alliance": 77, "Horde": 178, "Both": 0}
+CLASS_BIT = {"Warrior": 1, "Paladin": 2, "Hunter": 4, "Rogue": 8, "Priest": 16, "Shaman": 64,
+             "Mage": 128, "Warlock": 256, "Druid": 1024}
 
 # Quests started by an item ForeverChanges knows no source for: a giver
 # of kind "i" named after the item, with a position only when a Forever
-# source says where it drops: "mp" (retail map ID, percent) or "pos"
-# (continent, x, y). Without one the hub says where the chain starts and
-# sets no mark. Never a guess from vanilla spawns (Jonatan, 16.10.2026:
-# the Dark Iron dwarves at the Stonewrought Dam had nothing).
+# source says where it drops: "mp" (retail map ID, percent). Without one
+# the hub says where the chain starts and sets no mark. Never a guess
+# from vanilla spawns (Jonatan, 16.10.2026: the Dark Iron dwarves at the
+# Stonewrought Dam had nothing).
 ITEM_STARTS = {
     # Underground Map (Hall of Thanes chain). ForeverChanges and Wowhead list no
     # drop; the community guides agree (60forever, wowhandbook, Icy Veins,
     # MMONerds, Zockify, 16.10.2026): Dark Iron Spies at Ironband's Compound,
-    # south-east Dun Morogh, 77.8, 61.0 (60forever). Vanilla has 24 Dark Iron
-    # Spies spawned there too. Seen in game 16.10.2026 (dropped from a Dark
-    # Iron Spy). The guides also name a lead-in from Beldin
-    # Steelgrill in Kharanos (A Visitor to Dun Morogh, Farsen's Watch, Nip 'Em
-    # in the Bud: slay 10 spies), not on ForeverChanges' dungeon-quest list.
+    # south-east Dun Morogh, 77.8, 61.0 (60forever). Seen in game 16.10.2026
+    # (dropped from a Dark Iron Spy).
     96391: {"n": "Dark Iron Map, from Dark Iron Spies at Ironband's Compound",
             "mp": (1426, 77.8, 61.0)},
 }
 
+BREADCRUMB = re.compile(r"^(Speak|Talk) (with|to) ", re.I)
+
+
+# ----------------------------------------------------------------------
+# Fetching
+# ----------------------------------------------------------------------
 
 def fetch(url, dest):
     req = urllib.request.Request(url, headers={"User-Agent": UA})
@@ -88,41 +114,113 @@ def fetch(url, dest):
     time.sleep(PAUSE)
 
 
+def cmd_fetch(cache):
+    qdir, ddir = os.path.join(cache, "quest"), os.path.join(cache, "dungeons")
+    os.makedirs(qdir, exist_ok=True)
+    os.makedirs(ddir, exist_ok=True)
+    for slug in SLUG_KEY:
+        dest = os.path.join(ddir, f"{slug}.html")
+        if not os.path.exists(dest):
+            fetch(f"{SITE}/dungeons/{slug}", dest)
+    sitemap = os.path.join(cache, "quest-sitemap.xml")
+    fetch(f"{SITE}/quest/sitemap.xml", sitemap)
+    urls = re.findall(r"<loc>([^<]+)</loc>", open(sitemap, encoding="utf-8").read())
+    done = failed = 0
+    for i, url in enumerate(urls):
+        qid = re.search(r"/quest/(\d+)", url).group(1)
+        dest = os.path.join(qdir, f"{qid}.html")
+        if os.path.exists(dest) and os.path.getsize(dest) > 1000:
+            continue
+        try:
+            fetch(url, dest)
+            done += 1
+        except Exception as e:  # noqa: BLE001
+            failed += 1
+            print(f"  {qid}: {e}")
+            time.sleep(5)
+        if (i + 1) % 250 == 0:
+            print(f"  {i + 1} of {len(urls)} pages, {done} fetched", flush=True)
+    print(f"{len(urls)} quest pages in the sitemap, {done} fetched now, {failed} failed, {len(SLUG_KEY)} dungeon pages")
+
+
+# ----------------------------------------------------------------------
+# Parsing
+# ----------------------------------------------------------------------
+
 def payload_of(html):
     chunks = re.findall(r'self\.__next_f\.push\(\[1,"((?:[^"\\]|\\.)*)"\]\)', html)
     return "".join(json.loads('"' + c + '"') for c in chunks)
 
 
-def lua_str(s):
-    return '"' + s.replace("\\", "\\\\").replace('"', '\\"') + '"'
+def json_objects(p, start_pat):
+    """Every JSON object in the payload that starts at a match of start_pat."""
+    out = []
+    for m in re.finditer(start_pat, p):
+        j = m.start()
+        depth, instr, esc = 0, False, False
+        for k in range(j, len(p)):
+            c = p[k]
+            if instr:
+                if esc:
+                    esc = False
+                elif c == "\\":
+                    esc = True
+                elif c == '"':
+                    instr = False
+                continue
+            if c == '"':
+                instr = True
+            elif c == "{":
+                depth += 1
+            elif c == "}":
+                depth -= 1
+                if depth == 0:
+                    try:
+                        out.append(json.loads(p[j:k + 1]))
+                    except ValueError:
+                        pass
+                    break
+    return out
 
 
-def parse(html, qid):
-    """Return a dict for one quest page, or None if the page has no quest."""
+def fact(p, name):
+    """The plain-text dd of a facts-list dt, or None."""
+    m = re.search(r'"children":"' + re.escape(name) + r'"\}\],\["\$","dd",null,\{"children":(?:\[)?"([^"]*)"', p)
+    return m.group(1) if m else None
+
+
+def npc_fact(p, name):
+    m = re.search(r'"' + name + r'"\]\}\],\["\$","dd",null,\{"children":\[\["\$","span","0",\{"children":\[false,"([^"]+)"', p)
+    return m.group(1) if m else None
+
+
+def parse_quest(html, qid):
+    """A dict for one quest page, or None when the page holds no quest."""
     p = payload_of(html)
     m = re.search(r'"children":"([^"]+?): level (\d+) quest(?: in ([^"·]+?))? · WoW Forever', p)
     if not m:
         return None
-    title, level, where = m.group(1), int(m.group(2)), (m.group(3) or "").strip()
-    q = {"id": qid, "t": title, "l": level}
+    q = {"id": qid, "t": m.group(1), "l": int(m.group(2)), "where": (m.group(3) or "").strip()}
     desc = re.search(r'"description","content":"([^"]*)"', p)
     desc = desc.group(1) if desc else ""
     mm = re.search(r"from level (\d+)", desc)
     q["m"] = int(mm.group(1)) if mm else None
-
-    # Side and type are stated in the meta description ("A level 33 dungeon
-    # quest for the Alliance, from level 24."); the facts list is split
-    # across payload chunks and not safe to read.
     sm = re.search(r"A level \d+ (dungeon |elite |group |raid )?quest for (the Alliance|the Horde|both factions)", desc)
     side = {"the Alliance": "Alliance", "the Horde": "Horde", "both factions": "Both"}.get(sm.group(2)) if sm else ""
-    q["r"] = SIDE_MASK.get(side)
     q["side"] = side
-    q["type"] = (sm.group(1) or "").strip().capitalize() if sm else ""
-    q["where"] = where
-    q["d"] = DUNGEON_KEY.get(where)
-
-    # Chain: the route is an ordered list of steps (li keyed by quest ID),
-    # each step holding one or more quests (div.qp-route-quest keyed by ID).
+    q["r"] = SIDE_MASK.get(side)
+    q["type"] = (sm.group(1) or "").strip().lower() if sm else ""
+    if not q["type"]:
+        q["type"] = (fact(p, "Type") or "").lower()
+    q["c"] = CLASS_BIT.get(fact(p, "Class") or "", 0)
+    q["repeatable"] = fact(p, "Repeatable") is not None
+    # The category the page sits under: a dungeon (link to /dungeons/<slug>),
+    # a quest list (/quests/<slug>: zones, raids, classes) or a plain name.
+    cm = re.search(r'"qp-crumbs".*?"children":"Quests"\}\],\[\["\$","span",null,\{"aria-hidden":"true","children":" › "\}\],'
+                   r'\["\$","(?:span|a)",null,\{(?:"href":"/([a-z]+)/([^"/]+)",)?"children":"([^"]+)"', p)
+    q["cat_kind"], q["cat_slug"], q["cat"] = (cm.group(1), cm.group(2), cm.group(3)) if cm else (None, None, "")
+    # Chain: an ordered list of steps (li keyed by quest ID), each step
+    # holding one or more quests (div.qp-route-quest keyed by ID).
     steps = []
     for li in re.finditer(r'\["\$","li","(\d+)",\{"className":(.*?)(?=\["\$","li","\d+",\{"className":|"qp-section-sub"|$)', p, re.S):
         ids = [int(x) for x in re.findall(r'\["\$","div","(\d+)",\{"className":"qp-route-quest', li.group(2))]
@@ -133,136 +231,198 @@ def parse(html, qid):
     mine = next((i for i, step in enumerate(steps) if qid in step), None)
     q["step"] = mine
     q["p"] = steps[mine - 1][0] if mine else None
-
     # Givers: zones JSON with start pins.
     givers = []
-    zm = re.search(r'"zones":(\[\{.*?\}\]),"spawns"', p)
     for zone in re.finditer(r'\{"id":(\d+),"name":"([^"]*)","slug":"[^"]*","link":[^,]*,"pins":(\[[^\]]*\])', p):
-        map_id, zone_name, pins = int(zone.group(1)), zone.group(2), json.loads(zone.group(3))
+        map_id, pins = int(zone.group(1)), json.loads(zone.group(3))
         for pin in pins:
             if pin.get("start"):
-                givers.append({"n": pin.get("name", "?"), "map": map_id, "x": pin["x"], "y": pin["y"], "zone": zone_name})
+                givers.append({"n": pin.get("name", "?"), "map": map_id, "x": pin["x"], "y": pin["y"]})
     q["g"] = givers
-    start = re.search(r'"Start"\]\}\],\["\$","dd",null,\{"children":\[\["\$","span","0",\{"children":\[false,"([^"]+)"', p)
-    q["start"] = start.group(1) if start else None
+    q["start"] = npc_fact(p, "Start")
+    q["end"] = npc_fact(p, "End")
+    obj = re.search(r'"Quest Objectives"\}\],\[\["\$","p","0",\{"lang":"\$undefined","children":"([^"]*)"', p)
+    q["objective"] = obj.group(1) if obj else ""
     return q
 
 
-def cmd_fetch(d):
-    os.makedirs(d, exist_ok=True)
-    index = os.path.join(d, "dungeon-quests.html")
-    fetch(SITE + "/dungeon-quests", index)
-    html = open(index, encoding="utf-8").read()
-    # Links are /quest/<id> or, since November 2026, /quest/<id>/<slug>.
-    todo = sorted({int(x) for x in re.findall(r'href="/quest/(\d+)(?:/[^"]*)?"', html)})
-    seen = set()
-    while todo:
-        qid = todo.pop(0)
-        if qid in seen:
-            continue
-        seen.add(qid)
-        dest = os.path.join(d, f"{qid}.html")
-        if not os.path.exists(dest):
-            fetch(f"{SITE}/quest/{qid}", dest)
-        page = open(dest, encoding="utf-8").read()
-        q = parse(page, qid)
-        if q:
-            for cid in q["chain"]:
-                if cid not in seen:
-                    todo.append(cid)
-    print(f"{len(seen)} quest pages in {d}")
-
-
-def overview_givers(d):
-    """Giver name, zone and coordinates per quest from the /dungeon-quests
-    table ("Where to take it"), for quest pages that carry no map pin."""
-    path = os.path.join(d, "dungeon-quests.html")
-    if not os.path.exists(path):
-        return {}
-    p = payload_of(open(path, encoding="utf-8").read())
+def parse_dungeon(html):
+    """The quest records of one dungeon page: id -> record."""
+    p = payload_of(html)
     out = {}
-    rows = re.split(r'(?="href":"/quest/\d+(?:/[^"]*)?","lang")', p)
-    for row in rows:
-        m = re.match(r'"href":"/quest/(\d+)(?:/[^"]*)?"', row)
-        if not m:
-            continue
-        qid = int(m.group(1))
-        w = re.search(r'"Where to take it","children":\[\["\$","a",null,\{"href":"[^"]*","children":"([^"]+)"\}\],\["\$","small",null,\{"children":\["([^"]+)",", ([0-9.]+), ([0-9.]+)"\]', row)
-        if w and qid not in out:
-            name, zone, x, y = w.group(1), w.group(2), float(w.group(3)), float(w.group(4))
-            if zone in ZONE_MAP:
-                out[qid] = {"n": name, "map": ZONE_MAP[zone], "x": x, "y": y, "zone": zone}
-            else:
-                print(f"  zone without map ID: {zone} (quest {qid})")
-            continue
-        # Giver named but without a map position (stands inside the instance).
-        w = re.search(r'"Where to take it","children":\[\["\$","a",null,\{"href":"[^"]*","children":"([^"]+)"\}\]', row)
-        if w and qid not in out:
-            out[qid] = {"n": w.group(1)}
+    for rec in json_objects(p, r'\{"id":\d+,"title":"'):
+        if "title" in rec and isinstance(rec.get("id"), int):
+            out.setdefault(rec["id"], rec)
     return out
 
 
-def cmd_build(d, out, vanilla_ids):
-    quests = {}
-    fallback = overview_givers(d)
-    for name in os.listdir(d):
-        if not re.fullmatch(r"\d+\.html", name):
-            continue
-        qid = int(name[:-5])
-        q = parse(open(os.path.join(d, name), encoding="utf-8").read(), qid)
-        if q:
-            if not q["g"] and qid in fallback:
-                if "map" in fallback[qid]:
-                    q["g"] = [fallback[qid]]
-                elif not q["start"]:
-                    q["start"] = fallback[qid]["n"]
-            quests[qid] = q
-    new = {qid: q for qid, q in quests.items() if qid not in vanilla_ids}
+# ----------------------------------------------------------------------
+# Building
+# ----------------------------------------------------------------------
 
-    # Chain flags: walk forward through "chain" lists to find the dungeons a chain leads to.
-    # A chain leads to a dungeon only through the quests from this step on;
-    # follow-ups after the dungeon quest do not need the instance.
+def lua_str(s):
+    return '"' + s.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
+def instance_key(q):
+    """The instance a quest page is about, by title, category or list."""
+    if q["where"] in NAME_KEY:
+        return NAME_KEY[q["where"]]
+    if q["cat_kind"] == "dungeons" and q["cat_slug"] in SLUG_KEY:
+        return SLUG_KEY[q["cat_slug"]]
+    if q["cat_kind"] == "quests" and q["cat_slug"] in RAID_CAT:
+        return RAID_CAT[q["cat_slug"]]
+    if q["cat"] in NAME_KEY:
+        return NAME_KEY[q["cat"]]
+    return None
+
+
+def breadcrumb_target(q, quests):
+    """The quest a breadcrumb leads to: q starts a chain (no p), only says
+    "speak with X", and X gives another quest of the set: the one right
+    after q in the site's own chain when there is one (Speak with Shoni ->
+    Underground Assault), else by preference one for the same instance
+    (Seeking Caitlin has no chain on the site). A "speak with" quest
+    inside a chain (Look to an Old Friend, p set) is a link, not a
+    breadcrumb. None when q is no breadcrumb or X gives nothing we know."""
+    if q["p"] or not q["end"] or not BREADCRUMB.match(q["objective"]):
+        return None
+    after = None
+    if q["id"] in q["chain"]:
+        i = q["chain"].index(q["id"])
+        after = q["chain"][i + 1] if i + 1 < len(q["chain"]) else None
+    found = []
+    for other in quests.values():
+        if other["id"] == q["id"]:
+            continue
+        names = {g["n"] for g in other["g"]} | ({other["start"]} if other["start"] else set())
+        if q["end"] in names:
+            found.append(other)
+    if not found:
+        return None
+    found.sort(key=lambda o: (o["id"] != after, o["d"] != q["d"], o["id"]))
+    return found[0]["id"]
+
+
+def cmd_build(cache, out):
+    qdir, ddir = os.path.join(cache, "quest"), os.path.join(cache, "dungeons")
+    quests = {}
+    for name in os.listdir(qdir):
+        if re.fullmatch(r"\d+\.html", name):
+            q = parse_quest(open(os.path.join(qdir, name), encoding="utf-8").read(), int(name[:-5]))
+            if q:
+                quests[q["id"]] = q
+    listed = {}          # quest id -> (key, record) from the dungeon pages
+    for name in sorted(os.listdir(ddir)):
+        slug = name[:-5]
+        if slug in SLUG_KEY:
+            for qid, rec in parse_dungeon(open(os.path.join(ddir, name), encoding="utf-8").read()).items():
+                listed.setdefault(qid, (SLUG_KEY[slug], rec))
+
+    # Instance and flags of every quest. A quest is a dungeon quest when
+    # the site types it so; the dungeon pages tie the whole chain to the
+    # instance (cd) even when only the last step is typed dungeon.
+    for q in quests.values():
+        q["d"] = instance_key(q)
+        if not q["d"] and q["id"] in listed:
+            q["d"] = listed[q["id"]][0]
+        if q["d"] in RAID_KEYS or q["type"] == "raid":
+            q["f"] = 4
+        elif q["type"] == "dungeon" and q["d"]:
+            q["f"] = 1
+        elif q["type"] in ("elite", "group"):
+            q["f"] = 2
+        else:
+            q["f"] = 0
+        if q["repeatable"]:
+            q["f"] = 0
+        # A chain link the quest page does not know: the dungeon page's
+        # "prev" names the quest before it.
+        if not q["p"] and q["id"] in listed:
+            prev = listed[q["id"]][1].get("prev")
+            if isinstance(prev, dict) and prev.get("title"):
+                cands = [o for o in quests.values() if o["t"] == prev["title"] and o["id"] != q["id"]
+                         and (o["d"] == q["d"] or o["id"] in listed)]
+                if len(cands) == 1:
+                    q["p"] = cands[0]["id"]
+
+    # Keys of the chain from each quest on (follow-ups after the instance
+    # quest do not need the instance).
     chain_d = {}
-    for q in new.values():
+    for q in quests.values():
         keys = set()
         start = q["step"] or 0
         for step in q["steps"][start:]:
             for cid in step:
                 cq = quests.get(cid)
-                if cq and cq["d"] and cq["type"]:
+                if cq and cq["d"] and cq["f"]:
                     keys.add(cq["d"])
-        if q["d"] and q["type"]:
+        if q["d"] and q["f"]:
             keys.add(q["d"])
+        if q["id"] in listed:
+            keys.add(listed[q["id"]][0])
         chain_d[q["id"]] = keys
 
+    for q in quests.values():
+        q["b"] = breadcrumb_target(q, quests)
+
+    # Which quests to write: every goal and every quest its chain walks
+    # back through, plus breadcrumb targets.
+    keep = set()
+    todo = [qid for qid, q in quests.items() if q["f"]]
+    while todo:
+        qid = todo.pop()
+        if qid in keep or qid not in quests:
+            continue
+        keep.add(qid)
+        q = quests[qid]
+        if q["p"]:
+            todo.append(q["p"])
+        if q["b"]:
+            todo.append(q["b"])
+
     lines = [
-        "-- Quest Data, Forever additions: quests that exist on WoW: Forever but",
-        "-- not in the vanilla database. Generated by tools/fetch_forever.py from",
-        "-- ForeverChanges (https://foreverchanges.pro), which reads the beta",
-        "-- client and Wowhead's Forever database; do not edit by hand.",
+        "-- Quest Data: dungeon quests, elite quests, raid quests and every quest",
+        "-- leading up to one, as WoW: Forever has them. Generated by",
+        "-- tools/fetch_forever.py from ForeverChanges (https://foreverchanges.pro),",
+        "-- which reads the Forever client and what the users of its addon see in",
+        "-- game. No vanilla data; do not edit by hand.",
         "--",
-        "-- Same fields as QuestData.lua, except giver positions are map",
-        "-- percentages: mp = { mapID, x, y } (retail map IDs, 0 to 100).",
-        "-- Quests.lua converts them to world positions when the addon loads.",
-        "-- Item-started quests whose source the site does not know carry a",
-        "-- hand-written giver of kind i (ITEM_STARTS), with a position only",
-        "-- when a Forever source says where it drops.",
+        "-- [questID] = {",
+        "--   t = title, l = quest level, m = minimum level,",
+        "--   f = flags (1 dungeon, 2 elite, 4 raid) of this quest,",
+        "--   cf = flags of the whole chain, d = instance key of this quest,",
+        "--   cd = instance keys of the whole chain (DungeonData keys),",
+        "--   r = race mask (0 any; Alliance 77, Horde 178), c = class mask (0 any),",
+        "--   p = previous quest in the chain,",
+        "--   b = the quest a breadcrumb leads to (\"Speak with X\", and X gives",
+        "--       that quest): the client hands out the follow-up directly, so the",
+        "--       breadcrumb counts as done once b is in the log or done,",
+        "--   g = givers { n = name, k = kind (c creature, i item),",
+        "--                mp = { { mapID, x, y }, ... } map percentages on retail",
+        "--                map IDs, converted to world positions at login },",
+        "--       a giver without mp is named only (the hub shows the name),",
+        "--   gi = instance key when the quest starts inside that instance.",
+        "-- }",
         "",
-        "UlDC.QUESTS_FOREVER = {",
+        "UlDC.QUESTS = {",
     ]
-    n_dungeon = 0
-    for qid in sorted(new):
-        q = new[qid]
-        f = 1 if q["type"] == "Dungeon" else (2 if q["type"] in ("Elite", "Group") else 0)
+    n_flag = {}
+    for qid in sorted(keep):
+        q = quests[qid]
         keys = chain_d[qid]
-        cf = 1 if keys else 0
-        if f:
-            n_dungeon += 1
+        cf = 0
+        for k in keys:
+            cf |= 4 if k in RAID_KEYS else 1
+        if q["f"] & 2:
+            cf |= 2
+        if q["f"]:
+            n_flag[q["f"]] = n_flag.get(q["f"], 0) + 1
         parts = [f"t={lua_str(q['t'])}", f"l={q['l']}"]
         if q["m"]:
             parts.append(f"m={q['m']}")
-        if f:
-            parts.append(f"f={f}")
+        if q["f"]:
+            parts.append(f"f={q['f']}")
         if cf:
             parts.append(f"cf={cf}")
         if q["d"]:
@@ -271,60 +431,64 @@ def cmd_build(d, out, vanilla_ids):
             parts.append("cd={" + ",".join(f'"{k}"' for k in sorted(keys)) + "}")
         if q["r"]:
             parts.append(f"r={q['r']}")
+        if q["c"]:
+            parts.append(f"c={q['c']}")
         if q["p"]:
             parts.append(f"p={q['p']}")
+        if q["b"]:
+            parts.append(f"b={q['b']}")
+        rec = listed.get(qid, (None, {}))[1]
+        giver = rec.get("giver") if isinstance(rec.get("giver"), list) else None
+        inside = bool(q["d"] and giver and len(giver) > 1 and NAME_KEY.get(giver[1]) == q["d"])
         if qid in ITEM_STARTS and not q["g"]:
             it = ITEM_STARTS[qid]
             if it.get("mp"):
                 parts.append("g={{n=%s,k=\"i\",mp={{%d,%.1f,%.1f}}}}" % (lua_str(it["n"]), *it["mp"]))
-            elif it.get("pos"):
-                parts.append("g={{n=%s,k=\"i\",pos={{%d,%.1f,%.1f}}}}" % (lua_str(it["n"]), *it["pos"]))
             else:
                 parts.append("g={{n=%s,k=\"i\"}}" % lua_str(it["n"]))
         elif q["g"]:
             gs = ",".join("{n=%s,k=\"c\",mp={{%d,%.1f,%.1f}}}" % (lua_str(g["n"]), g["map"], g["x"], g["y"]) for g in q["g"])
             parts.append("g={" + gs + "}")
-        elif q["start"]:
-            parts.append(f"g={{{{n={lua_str(q['start'])},k=\"c\"}}}}")
+        elif rec.get("starts"):
+            parts.append("g={{n=%s,k=\"i\"}}" % lua_str("Item: " + rec["starts"]))
             if q["d"]:
                 parts.append(f'gi="{q["d"]}"')
+        elif q["start"] or (giver and giver[0]):
+            name = q["start"] or giver[0]
+            parts.append(f"g={{{{n={lua_str(name)},k=\"c\"}}}}")
+            if inside or (q["d"] and not giver):
+                parts.append(f'gi="{q["d"]}"')
         elif q["d"]:
-            # No giver on any map and none named: starts from an item or
-            # object found inside the instance.
             parts.append('g={{n="Item found inside",k="i"}}')
             parts.append(f'gi="{q["d"]}"')
         lines.append(f"  [{qid}]={{{','.join(parts)}}},")
     lines.append("}")
     with open(out, "w", encoding="utf-8") as fh:
         fh.write("\n".join(lines) + "\n")
-    sides = sorted({q["side"] for q in new.values()})
-    types = sorted({q["type"] for q in new.values()})
-    wheres = sorted({q["where"] for q in new.values()})
-    nogiver = [q["id"] for q in new.values() if not q["g"]]
-    print(f"{len(quests)} pages parsed, {len(new)} not in vanilla data, {n_dungeon} dungeon/elite, written to {out}")
-    print("sides:", sides, "types:", types)
-    print("places:", wheres)
-    print("without map giver:", nogiver)
+
+    crumbs = [(q["id"], q["t"], q["b"]) for q in quests.values() if q["id"] in keep and q["b"]]
+    nogiver = [qid for qid in sorted(keep) if not quests[qid]["g"] and not quests[qid]["start"]
+               and not (listed.get(qid, (None, {}))[1].get("giver")) and qid not in ITEM_STARTS]
+    print(f"{len(quests)} quest pages, {len(listed)} on dungeon pages, {len(keep)} written to {out}: "
+          f"{n_flag.get(1, 0)} dungeon, {n_flag.get(2, 0)} elite, {n_flag.get(4, 0)} raid")
+    print("instances:", sorted({q['d'] for q in quests.values() if q['d']}))
+    print("types seen:", sorted({q['type'] for q in quests.values()}))
+    print("breadcrumbs:", crumbs)
+    print("without any giver:", nogiver)
 
 
 def main():
-    if len(sys.argv) < 3:
+    args = sys.argv[1:]
+    if not args or args[0] not in ("fetch", "build"):
         print(__doc__)
         sys.exit(1)
-    cmd, d = sys.argv[1], sys.argv[2]
-    if cmd == "fetch":
-        cmd_fetch(d)
-    elif cmd == "build":
-        out = sys.argv[sys.argv.index("-o") + 1] if "-o" in sys.argv else "QuestDataForever.lua"
-        vanilla = set()
-        here = os.path.dirname(os.path.abspath(__file__))
-        qd = os.path.join(here, "..", "QuestData.lua")
-        if os.path.exists(qd):
-            vanilla = {int(x) for x in re.findall(r"^\s*\[(\d+)\]=", open(qd, encoding="utf-8").read(), re.M)}
-        cmd_build(d, out, vanilla)
+    out = args[args.index("-o") + 1] if "-o" in args else "QuestData.lua"
+    positional = [a for i, a in enumerate(args[1:], 1) if not a.startswith("-") and args[i - 1] != "-o"]
+    cache = positional[0] if positional else DEFAULT_CACHE
+    if args[0] == "fetch":
+        cmd_fetch(cache)
     else:
-        print(__doc__)
-        sys.exit(1)
+        cmd_build(cache, out)
 
 
 if __name__ == "__main__":

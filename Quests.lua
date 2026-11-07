@@ -1,7 +1,8 @@
 -- Quests: which dungeon, elite and raid quests this character can go for
 -- right now, and where each one starts.
 --
--- The data is UlDC.QUESTS (generated, see tools/build_quests.py). This
+-- The data is UlDC.QUESTS (QuestData.lua, generated from ForeverChanges
+-- by tools/fetch_forever.py; Forever sources only, no vanilla data). This
 -- module adds what only the client knows: what the character has done
 -- (C_QuestLog.IsQuestFlaggedCompleted, verified on Forever), what is in
 -- the log, and the character's level, side, race and class.
@@ -10,6 +11,10 @@
 -- is not done, the chain is walked back along p until the first quest
 -- that is not done: that is the step to show, with its giver. Goals in
 -- the same chain share the step, so one pin can lead to several goals.
+--
+-- A breadcrumb ("speak with X", data field b = the quest X gives) counts
+-- as done once that quest is in the log or done: the client hands out
+-- the follow-up without it, so there is nothing left to fetch.
 --
 -- Every goal and step is also checked against the server once
 -- (C_QuestLog.RequestLoadQuestByID): a quest the server has no data for
@@ -35,15 +40,10 @@ UlDC.FLAG_DUNGEON, UlDC.FLAG_ELITE, UlDC.FLAG_RAID = FLAG_DUNGEON, FLAG_ELITE, F
 -- below the lower bound are long grey, above the upper bound not yet.
 local LEVELS_BELOW, LEVELS_ABOVE = 8, 6
 
--- Forever's own quests (QuestDataForever.lua, see tools/fetch_forever.py)
--- join the vanilla table; vanilla wins when both know an ID.
-for id, q in pairs(UlDC.QUESTS_FOREVER or {}) do
-    if not UlDC.QUESTS[id] then UlDC.QUESTS[id] = q end
-end
-
--- Givers from Forever data carry map percentages (mp = { mapID, x, y })
--- instead of world positions. The client converts them once at login, so
--- the pins and the hub only ever see pos = { continent, x, y }.
+-- Givers carry map percentages (mp = { mapID, x, y }) on retail map IDs,
+-- the way ForeverChanges reads them from the client. The client converts
+-- them once at login, so the pins and the hub only ever see
+-- pos = { continent, x, y }.
 local function ResolveMapPositions()
     if not (C_Map and C_Map.GetWorldPosFromMapPos and CreateVector2D) then return end
     for _, q in pairs(UlDC.QUESTS) do
@@ -80,7 +80,7 @@ local function Player()
     return {
         level = UnitLevel("player"),
         side = SIDE_MASK[UnitFactionGroup("player") or ""] or 0,
-        race = RACE_BIT[race],      -- nil for races vanilla data does not know (Skyborne)
+        race = RACE_BIT[race],      -- nil for races without a bit (Skyborne); the data carries sides, not races
         class = CLASS_BIT[class] or 0,
     }
 end
@@ -98,6 +98,10 @@ end
 ------------------------------------------------------------------------
 -- Completion
 ------------------------------------------------------------------------
+
+local function IsInLog(id)
+    return C_QuestLog and C_QuestLog.IsOnQuest and C_QuestLog.IsOnQuest(id) == true
+end
 
 local function IsCompleted(id)
     local known = completedCache[id]
@@ -124,14 +128,17 @@ local function IsCompleted(id)
             end
         end
     end
+    -- A breadcrumb is as good as done once the quest it leads to has
+    -- been picked up or finished (Seeking Caitlin pointed Sofie back to
+    -- Astranaar while Lost in the Thicket Things was in her log, 06.11.2026).
+    if not done then
+        local q = UlDC.QUESTS[id]
+        if q and q.b and (IsInLog(q.b) or IsCompleted(q.b)) then done = true end
+    end
     completedCache[id] = done
     return done
 end
 UlDC.IsQuestCompleted = IsCompleted
-
-local function IsInLog(id)
-    return C_QuestLog and C_QuestLog.IsOnQuest and C_QuestLog.IsOnQuest(id) == true
-end
 
 local function Invalidate()
     completedCache = {}

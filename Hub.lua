@@ -18,10 +18,9 @@
 -- step whose giver stands inside the instance, or that starts from an
 -- item found there, marks the entrance instead. The Map button on a
 -- dungeon row marks the entrance. On the map a marker stays until it is
--- right-clicked. The Loot button folds out the drops inside: Forever's own
--- lists from ForeverChanges where they exist (UlDC.LOOT_FOREVER, see
--- tools/fetch_loot.py, dungeons only), else the vanilla loot tables
--- (UlDC.LOOT, tools/build_loot.py, the raids): one line per creature, its items
+-- right-clicked. The Loot button folds out the drops inside, from
+-- ForeverChanges (UlDC.LOOT_FOREVER, see tools/fetch_loot.py; dungeons
+-- only, the raids are not on the site yet): one line per creature, its items
 -- in quality colors with slot and drop chance, dimmed when the character
 -- cannot use them. Hovering an item shows the game's item tooltip,
 -- clicking it puts the link in an open chat box. Settings (the feature
@@ -510,14 +509,13 @@ local function Fill()
     -- items underneath.
     local function lootRows(d)
         local sources = UlDC.LOOT_FOREVER and UlDC.LOOT_FOREVER[d.key]
-        if not sources or #sources == 0 then sources = UlDC.LOOT and UlDC.LOOT[d.key] end
         if not sources or #sources == 0 then
             local r = row(STEP_H, INDENT)
             r.highlight:Hide()
             r:EnableMouse(false)
             r.label:SetFontObject("GameFontHighlightSmall")
             r.label:SetTextColor(0.6, 0.6, 0.6)
-            r.label:SetText("No loot data for this instance yet.")
+            r.label:SetText("No loot seen on Forever for this instance yet.")
             return
         end
         for _, source in ipairs(sources) do

@@ -1,126 +1,120 @@
--- Dungeon Data: every instance entrance, with the level range the
--- instance is meant for.
+-- Dungeon Data: every instance, with the level range Forever gives it and
+-- where its entrance is on the map.
 --
--- Entrance positions are world coordinates on a continent (0 = Eastern
--- Kingdoms, 1 = Kalimdor) from the vanilla 1.12 data (vmangos). Where the
--- instance has a Meeting Stone, the pin sits on the stone, which stands
--- at the entrance you walk into (for the Deadmines that is the mine
--- house in Moonbrook, not the portal at the end of the tunnel). Instances
--- without a stone use the instance portal's area trigger. At runtime the
--- positions are projected onto whatever map is open, so no map IDs are
--- hard coded; verified on the Forever client 14.10.2026 (Westfall).
--- Level ranges are the classic ones; Forever may tune them, and the entry
--- level is the one the portal enforces.
+-- Forever sources only (Jonatan, 06.11.2026), nothing from vanilla tables:
+--  * Level ranges are ForeverChanges' (https://foreverchanges.pro, the
+--    dungeon list on every /dungeons/<slug> page, read 06.11.2026), wings
+--    with their own ranges where the site lists them.
+--  * Entrance positions are map percentages on retail map IDs
+--    (map, mx, my), converted to world positions at runtime (DungeonPins).
+--    They are the client's own entrance points as ForeverDB reads them
+--    (https://foreverdb.net/dungeon/<id>, 06.11.2026), except where Jonatan
+--    has stood at the entrance in game, which wins (noted per entry).
+--    The client's point can be the portal rather than where you walk in
+--    (Hall of Thanes). An instance without a position has none in any
+--    Forever source yet: the hub still lists it, the map shows no pin and
+--    the Map button does nothing.
+--  * The map can draw entrances itself (C_EncounterJournal); DungeonPins
+--    skips ours where it does.
 --
--- key ties an instance to the quests in QuestData.lua. One entry per pin. An instance with entrances far apart (Uldaman,
--- Stratholme) has one entry per entrance with a label; wings with their
--- own level ranges (Scarlet Monastery, Blackrock Spire) are listed under
--- wings and share one pin. Blackwing Lair has no pin of its own since it
--- is entered from inside Blackrock Spire.
---
--- Forever-only instances are not known yet; add them here when the client
--- reveals them (see /udc probe and the learned entrances planned in the
--- README).
+-- key ties an instance to the quests in QuestData.lua. One entry per
+-- instance. faction limits who can enter the city it sits in. Blackwing
+-- Lair is entered from inside Blackrock Spire and has no pin of its own.
 
 UlDC.DUNGEONS = {
     -- Dungeons, by level.
-    { key = "rfc", name = "Ragefire Chasm", kind = "dungeon", levels = { 13, 18 }, entry = 8, zone = "Orgrimmar", faction = "Horde",
-      continent = 1, x = 1818.30, y = -4402.10 },
-    { key = "wc", name = "Wailing Caverns", kind = "dungeon", levels = { 17, 24 }, entry = 10, zone = "The Barrens",
-      continent = 1, x = -793.30, y = -2135.60 },
-    { key = "deadmines", name = "The Deadmines", kind = "dungeon", levels = { 18, 23 }, entry = 10, zone = "Westfall",
-      continent = 0, x = -11089.30, y = 1561.10 },
-    { key = "sfk", name = "Shadowfang Keep", kind = "dungeon", levels = { 22, 30 }, entry = 10, zone = "Silverpine Forest",
-      continent = 0, x = -247.10, y = 1509.00 },
-    { key = "stockade", name = "The Stockade", kind = "dungeon", levels = { 22, 30 }, entry = 15, zone = "Stormwind City", faction = "Alliance",
-      continent = 0, x = -8810.50, y = 798.00 },
-    { key = "bfd", name = "Blackfathom Deeps", kind = "dungeon", levels = { 24, 32 }, entry = 10, zone = "Ashenvale",
-      continent = 1, x = 4075.20, y = 814.20 },
-    { key = "gnomeregan", name = "Gnomeregan", kind = "dungeon", levels = { 29, 38 }, entry = 15, zone = "Dun Morogh", label = "Main entrance",
-      continent = 0, x = -5203.70, y = 606.70 },
-    { key = "gnomeregan", name = "Gnomeregan", kind = "dungeon", levels = { 29, 38 }, entry = 15, zone = "Dun Morogh", label = "Back entrance",
-      continent = 0, x = -4858.27, y = 785.03 },
-    { key = "rfk", name = "Razorfen Kraul", kind = "dungeon", levels = { 29, 38 }, entry = 15, zone = "The Barrens",
-      continent = 1, x = -4465.70, y = -1807.10 },
-    { key = "sm", name = "Scarlet Monastery", kind = "dungeon", levels = { 28, 45 }, entry = 20, zone = "Tirisfal Glades",
-      continent = 0, x = 2655.90, y = -678.20,
-      wings = {
-          { name = "Graveyard", levels = { 28, 38 } },
-          { name = "Library",   levels = { 29, 39 } },
-          { name = "Armory",    levels = { 32, 42 } },
-          { name = "Cathedral", levels = { 35, 45 } },
-      } },
-    { key = "rfd", name = "Razorfen Downs", kind = "dungeon", levels = { 37, 46 }, entry = 25, zone = "The Barrens",
-      continent = 1, x = -4666.52, y = -2536.82 },
-    { key = "uldaman", name = "Uldaman", kind = "dungeon", levels = { 41, 51 }, entry = 30, zone = "Badlands", label = "Front entrance",
-      continent = 0, x = -6116.50, y = -3299.50 },
-    { key = "uldaman", name = "Uldaman", kind = "dungeon", levels = { 41, 51 }, entry = 30, zone = "Badlands", label = "Back entrance",
-      continent = 0, x = -6606.48, y = -3762.19 },
-    { key = "zf", name = "Zul'Farrak", kind = "dungeon", levels = { 44, 54 }, entry = 35, zone = "Tanaris",
-      continent = 1, x = -6829.20, y = -2874.30 },
-    { key = "maraudon", name = "Maraudon", kind = "dungeon", levels = { 46, 55 }, entry = 30, zone = "Desolace",
-      continent = 1, x = -1333.00, y = 2739.76,
-      wings = {
-          { name = "Orange side", levels = { 46, 52 } },
-          { name = "Purple side", levels = { 48, 55 } },
-      } },
-    { key = "st", name = "The Temple of Atal'Hakkar", kind = "dungeon", levels = { 50, 60 }, entry = 35, zone = "Swamp of Sorrows",
-      continent = 0, x = -10457.80, y = -3807.80 },
-    { key = "brd", name = "Blackrock Depths", kind = "dungeon", levels = { 52, 60 }, entry = 40, zone = "Blackrock Mountain",
-      continent = 0, x = -7176.63, y = -937.67 },
-    { key = "brs", name = "Blackrock Spire", kind = "dungeon", levels = { 55, 60 }, entry = 45, zone = "Blackrock Mountain",
-      continent = 0, x = -7518.19, y = -1239.13,
-      wings = {
-          { name = "Lower", levels = { 55, 60 } },
-          { name = "Upper", levels = { 58, 60 } },
-      },
-      note = "Blackwing Lair is entered from Upper Blackrock Spire." },
-    { key = "scholo", name = "Scholomance", kind = "dungeon", levels = { 58, 60 }, entry = 45, zone = "Western Plaguelands",
-      continent = 0, x = 1232.20, y = -2571.80 },
-    { key = "strat", name = "Stratholme", kind = "dungeon", levels = { 58, 60 }, entry = 45, zone = "Eastern Plaguelands", label = "Main gate",
-      continent = 0, x = 3372.40, y = -3379.60 },
-    { key = "strat", name = "Stratholme", kind = "dungeon", levels = { 58, 60 }, entry = 45, zone = "Eastern Plaguelands", label = "Service entrance",
-      continent = 0, x = 3237.46, y = -4060.60 },
-    { key = "dm", name = "Dire Maul", kind = "dungeon", levels = { 58, 60 }, entry = 45, zone = "Feralas",
-      continent = 1, x = -4427.50, y = 1412.90,
-      wings = {
-          { name = "East",  levels = { 55, 60 } },
-          { name = "West",  levels = { 58, 60 } },
-          { name = "North", levels = { 58, 60 } },
-      } },
-
-    -- Raids.
-    { key = "onyxia", name = "Onyxia's Lair", kind = "raid", levels = { 60, 60 }, entry = 50, zone = "Dustwallow Marsh",
-      continent = 1, x = -4768.61, y = -3752.11 },
-    { key = "mc", name = "Molten Core", kind = "raid", levels = { 60, 60 }, entry = 50, zone = "Blackrock Mountain",
-      continent = 0, x = -7513.22, y = -1033.77,
-      note = "The window in Blackrock Mountain; the walk goes through Blackrock Depths." },
-    { key = "bwl", name = "Blackwing Lair", kind = "raid", levels = { 60, 60 }, entry = 50, zone = "Blackrock Mountain",
-      note = "Entered from Upper Blackrock Spire." },
-    { key = "zg", name = "Zul'Gurub", kind = "raid", levels = { 60, 60 }, entry = 50, zone = "Stranglethorn Vale",
-      continent = 0, x = -11915.80, y = -1236.43 },
-    { key = "aq20", name = "Ruins of Ahn'Qiraj", kind = "raid", levels = { 60, 60 }, entry = 50, zone = "Silithus",
-      continent = 1, x = -8424.94, y = 1508.65 },
-    { key = "aq40", name = "Temple of Ahn'Qiraj", kind = "raid", levels = { 60, 60 }, entry = 50, zone = "Silithus",
-      continent = 1, x = -8230.40, y = 2005.33 },
-    { key = "naxx", name = "Naxxramas", kind = "raid", levels = { 60, 60 }, entry = 51, zone = "Eastern Plaguelands",
-      continent = 0, x = 3133.15, y = -3730.29 },
-
-    -- Forever additions. Positions are map percentages on retail map IDs
-    -- (map, mx, my), read from the beta client by ForeverDB
-    -- (https://foreverdb.net) and converted at runtime. Level ranges are
-    -- Blizzard's. Five more are announced but not open in the beta yet:
-    -- The Drowned City (35-40, Stranglethorn), Krol'dok Stronghold (40-45,
-    -- Riverglades), Alcaz Prison (48-53, Dustwallow), Blackmaw Hold (55-60,
-    -- Azshara), Shaper's Terrace (58-60, Un'Goro).
-    { key = "hot", name = "The Hall of Thanes", kind = "dungeon", levels = { 13, 18 }, zone = "Ironforge", forever = true,
+    { key = "hot", name = "The Hall of Thanes", kind = "dungeon", levels = { 13, 18 }, zone = "Ironforge", faction = "Alliance", forever = true,
       map = 1455, mx = 43.5, my = 52.0, label = "Passage from the High Seat",
-      note = "Enter the throne room, turn left into the web-covered passage, follow the stairs down past the lava to the bridge. Horde has to get through the city." },
+      note = "Enter the throne room, turn left into the web-covered passage, follow the stairs down past the lava to the bridge. Horde has to get through the city. Position seen in game 14.10.2026; the client's own point (77.1, 51.3) is the portal under the city." },
+    { key = "rfc", name = "Ragefire Chasm", kind = "dungeon", levels = { 13, 18 }, zone = "Orgrimmar", faction = "Horde",
+      map = 1454, mx = 53.0, my = 48.9 },
     { key = "rol", name = "Ruins of Lordaeron", kind = "dungeon", levels = { 15, 20 }, zone = "Tirisfal Glades", forever = true,
       map = 1420, mx = 63.3, my = 67.5, note = "The ruined capital above the Undercity." },
+    { key = "wc", name = "Wailing Caverns", kind = "dungeon", levels = { 17, 24 }, zone = "The Barrens",
+      map = 1413, mx = 47.7, my = 35.0 },
+    { key = "deadmines", name = "The Deadmines", kind = "dungeon", levels = { 17, 26 }, zone = "Westfall",
+      map = 1436, mx = 41.8, my = 72.5, label = "Mine house in Moonbrook",
+      note = "Where you walk in, seen in game 14.10.2026; the client's own point (38.2, 77.5) is the portal at the end of the tunnel." },
+    { key = "sfk", name = "Shadowfang Keep", kind = "dungeon", levels = { 22, 30 }, zone = "Silverpine Forest" },
+    { key = "bfd", name = "Blackfathom Deeps", kind = "dungeon", levels = { 24, 32 }, zone = "Ashenvale",
+      map = 1440, mx = 16.5, my = 11.0 },
+    { key = "stockade", name = "The Stockade", kind = "dungeon", levels = { 24, 32 }, zone = "Stormwind City", faction = "Alliance" },
     { key = "excav", name = "Excavation Site: Wetlands", kind = "dungeon", levels = { 26, 31 }, zone = "Wetlands", forever = true,
-      map = 1437, mx = 47.7, my = 61.8, note = "In the hills south of the road, between Whelgar's Excavation Site and Dun Algaz." },
+      map = 1437, mx = 47.7, my = 61.8,
+      note = "In the hills south of the road, between Whelgar's Excavation Site and Dun Algaz. Seen in game 14.10.2026; the client's own point (24.5, 73.4) is far to the south-west." },
     { key = "dalaran", name = "City of Dalaran", kind = "dungeon", levels = { 28, 33 }, zone = "Silverpine Forest", forever = true,
       map = 1421, mx = 69.6, my = 46.1, label = "Sewer gate",
       note = "Through the sewers; the gate needs the Dalaran Sewer Key (Heart of Disruption). Alliance enters from inside the city." },
+    { key = "gnomeregan", name = "Gnomeregan", kind = "dungeon", levels = { 29, 38 }, zone = "Dun Morogh",
+      map = 1426, mx = 17.7, my = 39.1 },
+    { key = "rfk", name = "Razorfen Kraul", kind = "dungeon", levels = { 29, 38 }, zone = "The Barrens",
+      map = 1413, mx = 42.3, my = 89.9 },
+    { key = "sm", name = "Scarlet Monastery", kind = "dungeon", levels = { 30, 46 }, zone = "Tirisfal Glades",
+      map = 1420, mx = 85.1, my = 31.4,
+      wings = {
+          { name = "Graveyard", levels = { 30, 38 } },
+          { name = "Library",   levels = { 33, 41 } },
+          { name = "Armory",    levels = { 36, 44 } },
+          { name = "Cathedral", levels = { 38, 46 } },
+      } },
+    { key = "drowned", name = "The Drowned City", kind = "dungeon", levels = { 35, 40 }, zone = "Stranglethorn Vale", forever = true,
+      note = "No entrance position in any Forever source yet." },
+    { key = "rfd", name = "Razorfen Downs", kind = "dungeon", levels = { 37, 46 }, zone = "The Barrens",
+      map = 1413, mx = 50.9, my = 92.9 },
+    { key = "kroldok", name = "Krol'dok Stronghold", kind = "dungeon", levels = { 40, 45 }, zone = "Riverglades", forever = true,
+      note = "No entrance position in any Forever source yet." },
+    { key = "uldaman", name = "Uldaman", kind = "dungeon", levels = { 41, 51 }, zone = "Badlands",
+      map = 1418, mx = 35.2, my = 10.3 },
+    { key = "zf", name = "Zul'Farrak", kind = "dungeon", levels = { 44, 54 }, zone = "Tanaris",
+      map = 1446, mx = 38.7, my = 19.9 },
+    { key = "maraudon", name = "Maraudon", kind = "dungeon", levels = { 46, 55 }, zone = "Desolace",
+      map = 1443, mx = 29.1, my = 62.9 },
+    { key = "alcaz", name = "Alcaz Prison", kind = "dungeon", levels = { 48, 53 }, zone = "Dustwallow Marsh", forever = true,
+      note = "No entrance position in any Forever source yet." },
+    { key = "st", name = "The Temple of Atal'Hakkar", kind = "dungeon", levels = { 50, 60 }, zone = "Swamp of Sorrows",
+      map = 1435, mx = 77.3, my = 35.9 },
+    { key = "brd", name = "Blackrock Depths", kind = "dungeon", levels = { 52, 60 }, zone = "Searing Gorge",
+      map = 1427, mx = 27.1, my = 72.5 },
+    { key = "dm", name = "Dire Maul", kind = "dungeon", levels = { 54, 60 }, zone = "Feralas",
+      map = 1444, mx = 62.0, my = 33.3,
+      wings = {
+          { name = "East",  levels = { 54, 60 } },
+          { name = "North", levels = { 56, 60 } },
+          { name = "West",  levels = { 56, 60 } },
+      } },
+    { key = "blackmaw", name = "Blackmaw Hold", kind = "dungeon", levels = { 55, 60 }, zone = "Azshara", forever = true,
+      note = "No entrance position in any Forever source yet." },
+    { key = "brs", name = "Blackrock Spire", kind = "dungeon", levels = { 55, 60 }, zone = "Burning Steppes",
+      map = 1428, mx = 33.0, my = 25.2,
+      wings = {
+          { name = "Lower", levels = { 55, 60 } },
+          { name = "Upper", levels = { 59, 60 } },
+      },
+      note = "Blackwing Lair is entered from Upper Blackrock Spire." },
+    { key = "scholo", name = "Scholomance", kind = "dungeon", levels = { 58, 60 }, zone = "Western Plaguelands",
+      map = 1422, mx = 69.0, my = 73.0 },
+    { key = "shapers", name = "Shaper's Terrace", kind = "dungeon", levels = { 58, 60 }, zone = "Un'Goro Crater", forever = true,
+      note = "No entrance position in any Forever source yet." },
+    { key = "strat", name = "Stratholme", kind = "dungeon", levels = { 58, 60 }, zone = "Eastern Plaguelands",
+      wings = {
+          { name = "Main Gate",    levels = { 58, 60 } },
+          { name = "Service Gate", levels = { 58, 60 } },
+      },
+      note = "No entrance position in any Forever source yet." },
+    -- Raids. Level ranges from ForeverChanges' quest categories (all 60).
+    { key = "onyxia", name = "Onyxia's Lair", kind = "raid", levels = { 60, 60 }, zone = "Dustwallow Marsh",
+      map = 1445, mx = 52.9, my = 77.7 },
+    { key = "mc", name = "Molten Core", kind = "raid", levels = { 60, 60 }, zone = "Burning Steppes",
+      map = 1428, mx = 26.3, my = 24.6,
+      note = "The window in Blackrock Mountain; the walk goes through Blackrock Depths." },
+    { key = "bwl", name = "Blackwing Lair", kind = "raid", levels = { 60, 60 }, zone = "Burning Steppes",
+      note = "Entered from Upper Blackrock Spire." },
+    { key = "zg", name = "Zul'Gurub", kind = "raid", levels = { 60, 60 }, zone = "Stranglethorn Vale",
+      note = "No entrance position in any Forever source yet." },
+    { key = "aq20", name = "Ruins of Ahn'Qiraj", kind = "raid", levels = { 60, 60 }, zone = "Silithus",
+      map = 1451, mx = 29.0, my = 92.8 },
+    { key = "aq40", name = "Temple of Ahn'Qiraj", kind = "raid", levels = { 60, 60 }, zone = "Silithus",
+      map = 1451, mx = 29.0, my = 92.7 },
+    { key = "naxx", name = "Naxxramas", kind = "raid", levels = { 60, 60 }, zone = "Eastern Plaguelands",
+      note = "No entrance position in any Forever source yet." },
 }
