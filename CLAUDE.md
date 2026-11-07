@@ -1,5 +1,7 @@
 # CLAUDE.md, UlDungeonCompanion
 
+> **AVVIKLET 07.11.2026.** Jonatan la ned addonen: questinfoen kan ikke gjøres pålitelig uten faktisk spilling gjennom alt innholdet (feil på Llana/Astranaar og Dalaran etter to kvelder med kildebytte), og det finnes allerede en god dungeon journal-addon for Forever. Repoet er arkivert på GitHub, mappa er fjernet fra AddOns på win, CurseForge-prosjektet (1743328) settes inaktivt av Jonatan selv. Ingen videre utvikling. Det eneste som var solid var inngangspinnene med Forevers nivåspenn (`DungeonData.lua`, `DungeonPins.lua`); om de skal leve videre som modul i UlRemedyForever er ikke avgjort. Resten av fila er historikk.
+
 WoW: Forever-addon som finner dungeons, dungeonquests og elitequests som passer spillerens nivå, på verdenskartet og i et eget vindu. For spillere som vil leve på egen hånd, men ikke gå glipp av gruppeinnholdet. Jonatans main er resto-druid, men addonen skal virke for alle klasser og begge fraksjoner.
 
 ## Modus

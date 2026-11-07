@@ -1,5 +1,7 @@
 # UlDungeonCompanion
 
+> **Discontinued, 7 November 2026.** Reliable dungeon quest information needs people playing through all of Forever's content, and that is not something this addon could deliver from the data available. A dungeon journal addon for Forever already covers the ground. The last version is 0.16.1; the repository is archived and stays readable.
+
 A companion for **World of Warcraft: Forever** players who want to level on their own terms but not miss the group content. It finds the dungeons, dungeon quests and elite quests that fit your level and shows them on the world map and in a browser window. Every feature can be switched off, and settings persist between sessions.
 
 > **Status:** 0.16.0, tested on the Forever launch client (build 1.60.1). Dungeon entrances and quest markers are verified in game. All data comes from Forever sources, nothing from vanilla databases (see below).
