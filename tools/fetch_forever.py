@@ -334,6 +334,12 @@ def cmd_build(cache, out):
             q["f"] = 2
         else:
             q["f"] = 0
+        # The site lists a quest under a dungeon when the dungeon is where
+        # it is done, typed or not ("Oh Brother...", "Serpentbloom", the
+        # elite-typed "Vorrel's Revenge"): that listing is the site's word
+        # that it is a dungeon quest. The UBRS quests it types raid stay raid.
+        if q["id"] in listed and q["f"] != 4:
+            q["f"] |= 1
         if q["repeatable"]:
             q["f"] = 0
         # A chain link the quest page does not know: the dungeon page's
